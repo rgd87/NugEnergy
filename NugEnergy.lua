@@ -9,10 +9,10 @@ local onlyText = false
 local classMarks = {}
 --[energy] = <spellid>,
 classMarks["ROGUE"] = {
-    [55] = 1329, -- Mutilate (http://www.wowhead.com/spell=1329)
+    --[35] = 2098, -- Eviscerate (http://www.wowhead.com/spell=2098)
 }
 classMarks["DRUID"] = {
-    [40] = 5221, -- Shred
+    --[35] = 22568, -- Ferocious Bite
 }
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
