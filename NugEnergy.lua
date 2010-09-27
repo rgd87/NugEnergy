@@ -6,6 +6,14 @@ local fontSize = 25
 local color = { 0.9,0.1,0.1 }
 local textcolor = { 1,1,1 }
 local onlyText = false
+local classMarks = {}
+--[energy] = <spellid>,
+classMarks["ROGUE"] = {
+    [55] = 1329, -- Mutilate (http://www.wowhead.com/spell=1329)
+}
+classMarks["DRUID"] = {
+    [40] = 5221, -- Shred
+}
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -17,10 +25,11 @@ NugEnergy:RegisterEvent("ADDON_LOADED")
 local UnitPower = UnitPower
 local math_modf = math.modf
 local ptypes = {
-    --[1] = function(p) return p end, --rage
-    [3] = function(p) return math_modf(p/5)*5 end, --energy
+    ["RAGE"] = function(p) return p end, --rage
+    ["ENERGY"] = function(p) return math_modf(p/5)*5 end, --energy
 }
-local truncate = ptypes[3]
+
+local truncate = ptypes["ENERGY"]
 function NugEnergy.ADDON_LOADED(self,event,arg1)
     if arg1 ~= "NugEnergy" then return end
     local class = select(2,UnitClass("player"))
@@ -28,13 +37,13 @@ function NugEnergy.ADDON_LOADED(self,event,arg1)
     NugEnergyDB = NugEnergyDB or {}
     NugEnergyDB.x = NugEnergyDB.x or 0
     NugEnergyDB.y = NugEnergyDB.y or 0
+    if not NugEnergyDB.rage then ptypes["RAGE"] = nil end
     NugEnergyDB.point = NugEnergyDB.point or "CENTER"
+    self.marks = classMarks[class] or {}
     self:Create()
+    self:RegisterEvent("UNIT_POWER")
+    self:RegisterEvent("UNIT_MAXPOWER")
     self:SetScript("OnUpdate",self.UpdateEnergy)
-    self:RegisterEvent("UNIT_ENERGY")
-    if ptypes[1] then self:RegisterEvent("UNIT_RAGE") end
-    self.UNIT_ENERGY = self.UpdateEnergy
-    self.UNIT_RAGE = self.UpdateEnergy
     
     self:RegisterEvent("UPDATE_STEALTH")
     self:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -50,22 +59,28 @@ function NugEnergy.ADDON_LOADED(self,event,arg1)
     SLASH_NUGENERGY2= "/nen"
     SlashCmdList["NUGENERGY"] = self.SlashCmd
 end
+function NugEnergy.UNIT_POWER(self,event,unit,powertype)
+    if ptypes[powertype] then self:UpdateEnergy() end
+end
 function NugEnergy.UpdateEnergy(self)
     local p = UnitPower("player")
     local p5 = truncate(p)
     self.text:SetText(p5)
-    if not onlyText then self:SetValue(p) end
+    if not onlyText then
+        self:SetValue(p)
+        if self.marks[p] then self:PlaySpell(self.marks[p]) end
+    end
 end
 function NugEnergy.UNIT_DISPLAYPOWER(self)
-    truncate = ptypes[UnitPowerType("player")] or function(p) return p end
+    truncate = ptypes[select(2,UnitPowerType("player"))] or function(p) return p end
     self:UPDATE_STEALTH()
 end
-function NugEnergy.UNIT_MAXENERGY(self)
+function NugEnergy.UNIT_MAXPOWER(self)
     self:SetMinMaxValues(0,UnitPowerMax("player"))
 end
 function NugEnergy.UPDATE_STEALTH(self)
-    if (IsStealthed() or UnitAffectingCombat("player")) and ptypes[UnitPowerType("player")] then
-        self:UNIT_MAXENERGY()
+    if (IsStealthed() or UnitAffectingCombat("player")) and ptypes[select(2,UnitPowerType("player"))] then
+        self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:Show()
     else
@@ -78,10 +93,11 @@ function NugEnergy.Create(self)
     f:SetWidth(width)
     f:SetHeight(height)
     if not onlyText then
-    f:SetBackdrop{
+    local backdrop = {
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 0,
         insets = {left = -2, right = -2, top = -2, bottom = -2},
     }
+    f:SetBackdrop(backdrop)
     f:SetBackdropColor(0,0,0,0.5)
     f:SetStatusBarTexture(tex)
     f:SetStatusBarColor(unpack(color))
@@ -91,8 +107,48 @@ function NugEnergy.Create(self)
     bg:SetVertexColor(color[1]/2,color[3]/2,color[3]/2)
     bg:SetAllPoints(f)
     f.bg = bg
-    f:UNIT_MAXENERGY()
-    end
+    f:UNIT_MAXPOWER()
+    
+    
+    -- MARKS
+    local f2 = CreateFrame("Frame",nil,f)
+    f2:SetWidth(height)--*.8
+    f2:SetHeight(height)
+    f2:SetBackdrop(backdrop)
+    f2:SetBackdropColor(0,0,0,0.5)
+    f2:SetAlpha(0)
+    --f2:SetFrameStrata("BACKGROUND") --fall behind energy bar
+    local icon = f2:CreateTexture(nil,"BACKGROUND")
+    icon:SetTexCoord(.07, .93, .07, .93)
+    icon:SetAllPoints(f2)
+    
+    local sht = f2:CreateTexture(nil,"OVERLAY")
+    sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
+    sht:SetAlpha(0.3)
+    sht:SetAllPoints(f)
+
+    f2:SetPoint("RIGHT",f,"LEFT",-2,0)
+    
+    local ag = f2:CreateAnimationGroup()    
+    local a1 = ag:CreateAnimation("Alpha")
+    a1:SetChange(1)
+    a1:SetDuration(0.3)
+    a1:SetOrder(1)
+    
+    local a2 = ag:CreateAnimation("Alpha")
+    a2:SetChange(-1)
+    a2:SetDuration(0.7)
+    a2:SetOrder(2)
+    
+    f.icon = icon
+    f.ag = ag
+    
+    f.PlaySpell = function(self,spellID)
+        self.icon:SetTexture(select(3,GetSpellInfo(spellID)))
+        self.ag:Play()
+    end    
+    
+    end -- endif onlyText
     
     local text = f:CreateFontString(nil, "OVERLAY")
     text:SetFont(font,fontSize)
@@ -115,7 +171,6 @@ function NugEnergy.Create(self)
         self:StopMovingOrSizing();
         _,_, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y = self:GetPoint(1)
     end)
-
 end
 
 function NugEnergy.SlashCmd(msg)
@@ -123,7 +178,8 @@ function NugEnergy.SlashCmd(msg)
     if not k or k == "help" then print([[Usage:
       |cff00ff00/nen lock|r
       |cff00ff00/nen unlock|r
-      |cff00ff00/nen reset|r]]
+      |cff00ff00/nen reset|r
+      |cff00ff00/nen rage|r]]
     )end
     if k == "unlock" then
         NugEnergy:EnableMouse(true)
@@ -133,5 +189,10 @@ function NugEnergy.SlashCmd(msg)
     end
     if k == "reset" then
         NugEnergy:SetPoint("CENTER",UIParent,"CENTER",0,0)
+    end
+    if k == "rage" then
+        NugEnergyDB.rage = not NugEnergyDB.rage
+        ptypes["RAGE"] = NugEnergyDB.rage and function(p) return p end or nil
+        NugEnergy:UPDATE_STEALTH()
     end
 end
