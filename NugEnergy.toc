@@ -1,0 +1,6 @@
+## Interface: 30300
+## Title: NugEnergy
+## Notes: Energy monitor
+## Author: d87
+## SavedVariables: NugEnergyDB
+NugEnergy.lua
