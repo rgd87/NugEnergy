@@ -8,12 +8,12 @@ local textcolor = { 1,1,1 }
 local onlyText = false
 local classMarks = {}
 --[energy] = <spellid>,
-classMarks["ROGUE"] = {
-    --[35] = 2098, -- Eviscerate (http://www.wowhead.com/spell=2098)
-}
-classMarks["DRUID"] = {
-    --[35] = 22568, -- Ferocious Bite
-}
+--classMarks["ROGUE"] = {
+--    [35] = 2098, -- Eviscerate (http://www.wowhead.com/spell=2098)
+--}
+--classMarks["DRUID"] = {
+--    [35] = 22568, -- Ferocious Bite
+--}
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -25,22 +25,26 @@ NugEnergy:RegisterEvent("ADDON_LOADED")
 local UnitPower = UnitPower
 local math_modf = math.modf
 local ptypes = {
-    ["RAGE"] = function(p) return p end, --rage
-    ["ENERGY"] = function(p) return math_modf(p/5)*5 end, --energy
+    ["RAGE"] = function(p) return p end,
+    ["FOCUS"] = function(p) return p end,
+    ["ENERGY"] = function(p) return math_modf(p/5)*5 end,
 }
 
 local truncate = ptypes["ENERGY"]
 function NugEnergy.ADDON_LOADED(self,event,arg1)
     if arg1 ~= "NugEnergy" then return end
     local class = select(2,UnitClass("player"))
-    if class ~= "ROGUE" and class ~= "DRUID" and class ~= "WARRIOR" then return end
+    if class ~= "ROGUE" and class ~= "DRUID" and class ~= "WARRIOR" and class ~= "HUNTER" then return end
     NugEnergyDB = NugEnergyDB or {}
     NugEnergyDB.x = NugEnergyDB.x or 0
     NugEnergyDB.y = NugEnergyDB.y or 0
     if not NugEnergyDB.rage then ptypes["RAGE"] = nil end
+    if not NugEnergyDB.focus then ptypes["RAGE"] = nil end
     NugEnergyDB.point = NugEnergyDB.point or "CENTER"
     self.marks = classMarks[class] or {}
     self:Create()
+    self:UPDATE_STEALTH()
+    self:PLAYER_TALENT_UPDATE()
     self:RegisterEvent("UNIT_POWER")
     self:RegisterEvent("UNIT_MAXPOWER")
     self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -55,6 +59,13 @@ function NugEnergy.ADDON_LOADED(self,event,arg1)
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self.PLAYER_ENTERING_WORLD = self.UNIT_DISPLAYPOWER
     
+    if not onlyText then
+    self:RegisterEvent("PLAYER_TALENT_UPDATE")
+    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+    self.ACTIVE_TALENT_GROUP_CHANGED = self.PLAYER_TALENT_UPDATE
+    self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
+    end
+    
     SLASH_NUGENERGY1= "/nugenergy"
     SLASH_NUGENERGY2= "/nen"
     SlashCmdList["NUGENERGY"] = self.SlashCmd
@@ -68,7 +79,7 @@ function NugEnergy.UpdateEnergy(self)
     self.text:SetText(p5)
     if not onlyText then
         self:SetValue(p)
-        if self.marks[p] then self:PlaySpell(self.marks[p]) end
+        --if self.marks[p] then self:PlaySpell(self.marks[p]) end
     end
 end
 function NugEnergy.UNIT_DISPLAYPOWER(self)
@@ -110,43 +121,43 @@ function NugEnergy.Create(self)
     f:UNIT_MAXPOWER()
     
     
-    -- MARKS
-    local f2 = CreateFrame("Frame",nil,f)
-    f2:SetWidth(height)--*.8
-    f2:SetHeight(height)
-    f2:SetBackdrop(backdrop)
-    f2:SetBackdropColor(0,0,0,0.5)
-    f2:SetAlpha(0)
-    --f2:SetFrameStrata("BACKGROUND") --fall behind energy bar
-    local icon = f2:CreateTexture(nil,"BACKGROUND")
-    icon:SetTexCoord(.07, .93, .07, .93)
-    icon:SetAllPoints(f2)
-    
-    local sht = f2:CreateTexture(nil,"OVERLAY")
-    sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
-    sht:SetAlpha(0.3)
-    sht:SetAllPoints(f)
+--~     -- MARKS
+--~     local f2 = CreateFrame("Frame",nil,f)
+--~     f2:SetWidth(height)--*.8
+--~     f2:SetHeight(height)
+--~     f2:SetBackdrop(backdrop)
+--~     f2:SetBackdropColor(0,0,0,0.5)
+--~     f2:SetAlpha(0)
+--~     --f2:SetFrameStrata("BACKGROUND") --fall behind energy bar
+--~     local icon = f2:CreateTexture(nil,"BACKGROUND")
+--~     icon:SetTexCoord(.07, .93, .07, .93)
+--~     icon:SetAllPoints(f2)
+--~     
+--~     local sht = f2:CreateTexture(nil,"OVERLAY")
+--~     sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
+--~     sht:SetAlpha(0.3)
+--~     sht:SetAllPoints(f)
 
-    f2:SetPoint("RIGHT",f,"LEFT",-2,0)
-    
-    local ag = f2:CreateAnimationGroup()    
-    local a1 = ag:CreateAnimation("Alpha")
-    a1:SetChange(1)
-    a1:SetDuration(0.3)
-    a1:SetOrder(1)
-    
-    local a2 = ag:CreateAnimation("Alpha")
-    a2:SetChange(-1)
-    a2:SetDuration(0.7)
-    a2:SetOrder(2)
-    
-    f.icon = icon
-    f.ag = ag
-    
-    f.PlaySpell = function(self,spellID)
-        self.icon:SetTexture(select(3,GetSpellInfo(spellID)))
-        self.ag:Play()
-    end    
+--~     f2:SetPoint("RIGHT",f,"LEFT",-2,0)
+--~     
+--~     local ag = f2:CreateAnimationGroup()    
+--~     local a1 = ag:CreateAnimation("Alpha")
+--~     a1:SetChange(1)
+--~     a1:SetDuration(0.3)
+--~     a1:SetOrder(1)
+--~     
+--~     local a2 = ag:CreateAnimation("Alpha")
+--~     a2:SetChange(-1)
+--~     a2:SetDuration(0.7)
+--~     a2:SetOrder(2)
+--~     
+--~     f.icon = icon
+--~     f.ag = ag
+--~     
+--~     f.PlaySpell = function(self,spellID)
+--~         self.icon:SetTexture(select(3,GetSpellInfo(spellID)))
+--~         self.ag:Play()
+--~     end    
     
     end -- endif onlyText
     
@@ -158,8 +169,6 @@ function NugEnergy.Create(self)
     text:SetTextColor(unpack(textcolor))
     text:SetVertexColor(1,1,1)
     f.text = text
-    
-    f:UPDATE_STEALTH()
     
     f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
     
@@ -194,5 +203,28 @@ function NugEnergy.SlashCmd(msg)
         NugEnergyDB.rage = not NugEnergyDB.rage
         ptypes["RAGE"] = NugEnergyDB.rage and function(p) return p end or nil
         NugEnergy:UPDATE_STEALTH()
+    end
+    if k == "focus" then
+        NugEnergyDB.focus = not NugEnergyDB.focus
+        ptypes["FOCUS"] = NugEnergyDB.focus and function(p) return p end or nil
+        NugEnergy:UPDATE_STEALTH()
+    end
+end
+
+function NugEnergy.PLAYER_TALENT_UPDATE(self,event)
+    if IsSpellKnown(1329) -- mutilate
+    then self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED");
+    else self:UnregisterEvent("UNIT_HEALTH"); self:UnregisterEvent("PLAYER_TARGET_CHANGED");
+    end
+end
+
+function NugEnergy.UNIT_HEALTH(self,event,unit)
+    if unit ~= "target" then return end
+    if UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
+        self:SetStatusBarColor(.9,0.1,0.4)
+        self.bg:SetVertexColor(.9*.5,.1*.5,.4*.5)
+    else
+        self:SetStatusBarColor(unpack(color))
+        self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
     end
 end
