@@ -103,6 +103,7 @@ function NugEnergy.Create(self)
     local f = self
     f:SetWidth(width)
     f:SetHeight(height)
+    
     if not onlyText then
     local backdrop = {
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 0,
@@ -159,7 +160,7 @@ function NugEnergy.Create(self)
 --~         self.ag:Play()
 --~     end    
     
-    end -- endif onlyText
+    end -- endif not onlyText
     
     local text = f:CreateFontString(nil, "OVERLAY")
     text:SetFont(font,fontSize)
@@ -188,7 +189,8 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen lock|r
       |cff00ff00/nen unlock|r
       |cff00ff00/nen reset|r
-      |cff00ff00/nen rage|r]]
+      |cff00ff00/nen rage|r
+      |cff00ff00/nen focus|r]]
     )end
     if k == "unlock" then
         NugEnergy:EnableMouse(true)
