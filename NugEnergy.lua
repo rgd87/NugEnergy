@@ -134,10 +134,10 @@ function NugEnergy.Create(self)
 --~     icon:SetTexCoord(.07, .93, .07, .93)
 --~     icon:SetAllPoints(f2)
 --~     
---~     local sht = f2:CreateTexture(nil,"OVERLAY")
---~     sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
---~     sht:SetAlpha(0.3)
---~     sht:SetAllPoints(f)
+--~     --local sht = f2:CreateTexture(nil,"OVERLAY")
+--~     --sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
+--~     --sht:SetAlpha(0.3)
+--~     --sht:SetAllPoints(f)
 
 --~     f2:SetPoint("RIGHT",f,"LEFT",-2,0)
 --~     
