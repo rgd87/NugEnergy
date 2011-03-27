@@ -6,14 +6,6 @@ local fontSize = 25
 local color = { 0.9,0.1,0.1 }
 local textcolor = { 1,1,1 }
 local onlyText = false
-local classMarks = {}
---[energy] = <spellid>,
---classMarks["ROGUE"] = {
---    [35] = 2098, -- Eviscerate (http://www.wowhead.com/spell=2098)
---}
---classMarks["DRUID"] = {
---    [35] = 22568, -- Ferocious Bite
---}
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -41,7 +33,7 @@ function NugEnergy.ADDON_LOADED(self,event,arg1)
     if not NugEnergyDB.rage then ptypes["RAGE"] = nil end
     if not NugEnergyDB.focus then ptypes["RAGE"] = nil end
     NugEnergyDB.point = NugEnergyDB.point or "CENTER"
-    self.marks = classMarks[class] or {}
+    NugEnergyDB.marks = NugEnergyDB.marks or {}
     self:Create()
     self:UPDATE_STEALTH()
     self:PLAYER_TALENT_UPDATE()
@@ -80,6 +72,7 @@ function NugEnergy.UpdateEnergy(self)
     if not onlyText then
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
+        if self.marks[p] then self.marks[p].shine:Play() end
     end
 end
 function NugEnergy.UNIT_DISPLAYPOWER(self)
@@ -121,7 +114,11 @@ function NugEnergy.Create(self)
     f.bg = bg
     f:UNIT_MAXPOWER()
     
-    
+    -- NEW MARKS
+    self.marks = {}
+    for p in pairs(NugEnergyDB.marks) do
+        self:CreateMark(p)
+    end
 --~     -- MARKS
 --~     local f2 = CreateFrame("Frame",nil,f)
 --~     f2:SetWidth(height)--*.8
@@ -183,6 +180,13 @@ function NugEnergy.Create(self)
     end)
 end
 
+local ParseOpts = function(str)
+    local fields = {}
+    for opt,args in string.gmatch(str,"(%w*)%s*=%s*([%w%,%-%_%.%:%\\%']+)") do
+        fields[opt:lower()] = tonumber(args) or args
+    end
+    return fields
+end
 function NugEnergy.SlashCmd(msg)
     k,v = string.match(msg, "([%w%+%-%=]+) ?(.*)")
     if not k or k == "help" then print([[Usage:
@@ -190,13 +194,39 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen unlock|r
       |cff00ff00/nen reset|r
       |cff00ff00/nen rage|r
-      |cff00ff00/nen focus|r]]
+      |cff00ff00/nen focus|r
+      |cff00ff00/nen markadd at=35|r
+      |cff00ff00/nen markdel at=35|r
+      |cff00ff00/nen marklist|r]]
     )end
     if k == "unlock" then
         NugEnergy:EnableMouse(true)
     end
     if k == "lock" then
         NugEnergy:EnableMouse(false)
+    end
+    if k == "markadd" then
+        local p = ParseOpts(v)
+        local at = p["at"]
+        if at then
+            NugEnergyDB.marks[at] = true
+            NugEnergy:CreateMark(at)
+        end
+    end
+    if k == "markdel" then
+        local p = ParseOpts(v)
+        local at = p["at"]
+        if at then
+            NugEnergyDB.marks[at] = nil
+            NugEnergy.marks[at]:Hide()
+            NugEnergy.marks[at] = nil
+        end
+    end
+    if k == "marklist" then
+        print("Current marks:")
+        for p in pairs(NugEnergyDB.marks) do
+            print(string.format("    @%d",p))
+        end
     end
     if k == "reset" then
         NugEnergy:SetPoint("CENTER",UIParent,"CENTER",0,0)
@@ -229,4 +259,53 @@ function NugEnergy.UNIT_HEALTH(self,event,unit)
         self:SetStatusBarColor(unpack(color))
         self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
     end
+end
+
+local UpdateMark = function(self)
+    local bar = self:GetParent()
+    local min,max = bar:GetMinMaxValues()
+    local pos = self.position / max * bar:GetWidth()
+    self:SetPoint("CENTER",bar,"LEFT",pos,0)
+end
+function NugEnergy.CreateMark(self, at)
+        local m = CreateFrame("Frame",nil,self)
+        m:SetWidth(2)
+        m:SetHeight(self:GetHeight())
+        m:SetFrameLevel(4)
+        m:SetAlpha(0.6)
+        
+        local texture = m:CreateTexture(nil, "OVERLAY")
+		texture:SetTexture("Interface\\AddOns\\NugEnergy\\mark")
+        texture:SetVertexColor(1,1,1,0.3)
+        texture:SetAllPoints(m)
+        m.texture = texture
+        
+        local spark = m:CreateTexture(nil, "OVERLAY")
+		spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
+        spark:SetAlpha(0)
+        spark:SetWidth(20)
+        spark:SetHeight(m:GetHeight()*2.7)
+        spark:SetPoint("CENTER",m)
+		spark:SetBlendMode('ADD')
+        m.spark = spark
+        
+        local ag = spark:CreateAnimationGroup()
+        local a1 = ag:CreateAnimation("Alpha")
+        a1:SetChange(1)
+        a1:SetDuration(0.2)
+        a1:SetOrder(1)
+        local a2 = ag:CreateAnimation("Alpha")
+        a2:SetChange(-1)
+        a2:SetDuration(0.4)
+        a2:SetOrder(2)
+        
+        m.shine = ag
+        m.position = at
+        m.Update = UpdateMark
+        m:Update()
+        m:Show()
+    
+        self.marks[at] = m
+
+        return m
 end
