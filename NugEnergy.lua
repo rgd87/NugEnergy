@@ -6,84 +6,174 @@ local fontSize = 25
 local color = { 0.9,0.1,0.1 }
 local textcolor = { 1,1,1 }
 local onlyText = false
+local GetTalentPoints
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
 NugEnergy:SetScript("OnEvent", function(self, event, ...)
-	self[event](self, event, ...)
+	return self[event](self, event, ...)
 end)
 
 NugEnergy:RegisterEvent("ADDON_LOADED")
 local UnitPower = UnitPower
 local math_modf = math.modf
-local ptypes = {
-    ["RAGE"] = function(p) return p end,
-    ["FOCUS"] = function(p) return p end,
-    ["ENERGY"] = function(p) return math_modf(p/5)*5 end,
+
+local PowerFilter
+local GetPower = UnitPower
+local GetPowerMax = UnitPowerMax
+
+local defaults = {
+    point = "CENTER",
+    x = 0, y = 0,
+    marks = {},
+    focus = true,
+    rage = false,
+    demonic = false,
+    runic = false,
 }
 
-local truncate = ptypes["ENERGY"]
-function NugEnergy.ADDON_LOADED(self,event,arg1)
-    if arg1 ~= "NugEnergy" then return end
-    local class = select(2,UnitClass("player"))
-    if class ~= "ROGUE" and class ~= "DRUID" and class ~= "WARRIOR" and class ~= "HUNTER" then return end
-    NugEnergyDB = NugEnergyDB or {}
-    NugEnergyDB.x = NugEnergyDB.x or 0
-    NugEnergyDB.y = NugEnergyDB.y or 0
-    if not NugEnergyDB.rage then ptypes["RAGE"] = nil end
-    if not NugEnergyDB.focus then ptypes["RAGE"] = nil end
-    NugEnergyDB.point = NugEnergyDB.point or "CENTER"
-    NugEnergyDB.marks = NugEnergyDB.marks or {}
-    self:Create()
-    self:UPDATE_STEALTH()
-    self:PLAYER_TALENT_UPDATE()
-    self:RegisterEvent("UNIT_POWER")
-    self:RegisterEvent("UNIT_MAXPOWER")
-    self:SetScript("OnUpdate",self.UpdateEnergy)
-    
-    self:RegisterEvent("UPDATE_STEALTH")
-    self:RegisterEvent("PLAYER_REGEN_ENABLED")
-    self:RegisterEvent("PLAYER_REGEN_DISABLED")
-    self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
-    self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-    
-    self:RegisterEvent("UNIT_DISPLAYPOWER")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD")
-    self.PLAYER_ENTERING_WORLD = self.UNIT_DISPLAYPOWER
-    
-    if not onlyText then
-    self:RegisterEvent("PLAYER_TALENT_UPDATE")
-    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
-    self.ACTIVE_TALENT_GROUP_CHANGED = self.PLAYER_TALENT_UPDATE
-    self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
+local function SetupDefaults(t, defaults)
+    for k,v in pairs(defaults) do
+        if type(v) == "table" then
+            if t[k] == nil then
+                t[k] = CopyTable(v)
+            else
+                SetupDefaults(t[k], v)
+            end
+        else
+            if t[k] == nil then t[k] = v end
+        end
     end
+end
+
+function NugEnergy.ADDON_LOADED(self,event,arg1)
+    if arg1 ~= "NugEnergy" then return end  
+
+    NugEnergyDB = NugEnergyDB or {}
+    SetupDefaults(NugComboBarDB, defaults)
+
+    NugEnergy:Initialize()
     
     SLASH_NUGENERGY1= "/nugenergy"
     SLASH_NUGENERGY2= "/nen"
     SlashCmdList["NUGENERGY"] = self.SlashCmd
 end
+
+
+function NugEnergy.Initialize(self)
+    self:RegisterEvent("UNIT_POWER")
+    self:RegisterEvent("UNIT_MAXPOWER")
+    self:RegisterEvent("PLAYER_REGEN_ENABLED")
+    self:RegisterEvent("PLAYER_REGEN_DISABLED")
+    self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+    self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+
+    local class = select(2,UnitClass("player"))
+    if class == "ROGUE" then
+        PowerFilter = "ENERGY"
+        self:RegisterEvent("UPDATE_STEALTH")
+        self:SetScript("OnUpdate",self.UpdateEnergy)
+        GetPower = function(unit)
+            local p = UnitPower(unit)
+            return p, math_modf(p/5)*5
+        end
+        self:RegisterEvent("SPELLS_CHANGED")
+
+        self.UNIT_HEALTH = function(self, event, unit)
+            if unit ~= "target" then return end
+            if UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
+                self:SetStatusBarColor(.9,0.1,0.4)
+                self.bg:SetVertexColor(.9*.5,.1*.5,.4*.5)
+            else
+                self:SetStatusBarColor(unpack(color))
+                self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
+            end
+        end
+        self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
+
+        self.SPELLS_CHANGED = function(self)
+            if IsPlayerSpell(111240) and not onlyText -- Dispatch
+                then self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
+                else self:UnregisterEvent("UNIT_HEALTH"); self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+            end
+        end
+        self:SPELLS_CHANGED()
+    elseif class == "DRUID" then
+        self:RegisterEvent("UNIT_DISPLAYPOWER")
+        self:RegisterEvent("UPDATE_STEALTH")
+        self:SetScript("OnUpdate",self.UpdateEnergy)
+        self.UNIT_DISPLAYPOWER = function(self)
+            if select(2,UnitPowerType("player")) == "ENERGY" then
+                PowerFilter = "ENERGY"
+            elseif NugEnergyDB.rage then
+                PowerFilter = "RAGE"
+            end
+            self:UPDATE_STEALTH()
+        end
+        self:UNIT_DISPLAYPOWER()
+    elseif class == "WARLOCK" and NugEnergyDB.demonic then
+        GetPower = function(unit) return UnitPower(unit, SPELL_POWER_DEMONIC_FURY) end
+        GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_DEMONIC_FURY) end
+        PowerFilter = "DEMONIC_FURY"
+        self.SPELLS_CHANGED = function(self)
+            if GetSpecialization() == 2 then
+                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            else
+                self:UnregisterEvent("UNIT_POWER")
+                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                self:Hide()
+            end
+        end
+        self:SPELLS_CHANGED()
+    elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
+        PowerFilter = "RUNIC_POWER"
+    elseif class == "WARRIOR" and NugEnergyDB.rage then
+        PowerFilter = "RAGE"
+    elseif class == "HUNTER" and NugEnergyDB.focus then
+
+        PowerFilter = "FOCUS"
+        self:SetScript("OnUpdate",self.UpdateEnergy)
+        GetPower = function(unit)
+            local p = UnitPower(unit)
+            return p, math_modf(p/5)*5
+        end
+    else
+        self:UnregisterAllEvents()
+        self:SetScript("OnUpdate", nil)
+        self:Hide()
+        return false
+    end
+    
+    if not self.initialized then
+        self:Create()
+        self.initialized = true
+    end
+    self:UPDATE_STEALTH()
+    return true
+end
+
+
+
+
 function NugEnergy.UNIT_POWER(self,event,unit,powertype)
-    if ptypes[powertype] then self:UpdateEnergy() end
+    if powertype == PowerFilter then self:UpdateEnergy() end
 end
 function NugEnergy.UpdateEnergy(self)
-    local p = UnitPower("player")
-    local p5 = truncate(p)
-    self.text:SetText(p5)
+    local p, p2 = GetPower("player")
+    p2 = p2 or p
+    self.text:SetText(p2)
     if not onlyText then
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
         if self.marks[p] then self.marks[p].shine:Play() end
     end
 end
-function NugEnergy.UNIT_DISPLAYPOWER(self)
-    truncate = ptypes[select(2,UnitPowerType("player"))] or function(p) return p end
-    self:UPDATE_STEALTH()
-end
 function NugEnergy.UNIT_MAXPOWER(self)
-    self:SetMinMaxValues(0,UnitPowerMax("player"))
+    self:SetMinMaxValues(0,GetPowerMax("player"))
 end
 function NugEnergy.UPDATE_STEALTH(self)
-    if (IsStealthed() or UnitAffectingCombat("player")) and ptypes[select(2,UnitPowerType("player"))] then
+    if (IsStealthed() or UnitAffectingCombat("player")) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:Show()
@@ -193,8 +283,10 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen lock|r
       |cff00ff00/nen unlock|r
       |cff00ff00/nen reset|r
-      |cff00ff00/nen rage|r
+      |cff00ff00/nen rage|r 
       |cff00ff00/nen focus|r
+      |cff00ff00/nen runic|r - Enable for Runic Power
+      |cff00ff00/nen demonic|r - for Warlock's Demonic Fury 
       |cff00ff00/nen markadd at=35|r
       |cff00ff00/nen markdel at=35|r
       |cff00ff00/nen marklist|r]]
@@ -233,31 +325,19 @@ function NugEnergy.SlashCmd(msg)
     end
     if k == "rage" then
         NugEnergyDB.rage = not NugEnergyDB.rage
-        ptypes["RAGE"] = NugEnergyDB.rage and function(p) return p end or nil
-        NugEnergy:UPDATE_STEALTH()
+        NugEnergy:Initialize()
     end
     if k == "focus" then
         NugEnergyDB.focus = not NugEnergyDB.focus
-        ptypes["FOCUS"] = NugEnergyDB.focus and function(p) return p end or nil
-        NugEnergy:UPDATE_STEALTH()
+        NugEnergy:Initialize()
     end
-end
-
-function NugEnergy.PLAYER_TALENT_UPDATE(self,event)
-    if IsSpellKnown(1329) -- mutilate
-    then self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED");
-    else self:UnregisterEvent("UNIT_HEALTH"); self:UnregisterEvent("PLAYER_TARGET_CHANGED");
+    if k == "demonic" then
+        NugEnergyDB.demonic = not NugEnergyDB.demonic
+        NugEnergy:Initialize()
     end
-end
-
-function NugEnergy.UNIT_HEALTH(self,event,unit)
-    if unit ~= "target" then return end
-    if UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
-        self:SetStatusBarColor(.9,0.1,0.4)
-        self.bg:SetVertexColor(.9*.5,.1*.5,.4*.5)
-    else
-        self:SetStatusBarColor(unpack(color))
-        self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
+    if k == "runic" then
+        NugEnergyDB.runic = not NugEnergyDB.runic
+        NugEnergy:Initialize()
     end
 end
 
