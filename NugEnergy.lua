@@ -49,7 +49,7 @@ function NugEnergy.ADDON_LOADED(self,event,arg1)
     if arg1 ~= "NugEnergy" then return end  
 
     NugEnergyDB = NugEnergyDB or {}
-    SetupDefaults(NugComboBarDB, defaults)
+    SetupDefaults(NugEnergyDB, defaults)
 
     NugEnergy:Initialize()
     
