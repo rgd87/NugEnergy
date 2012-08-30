@@ -6,7 +6,6 @@ local fontSize = 25
 local color = { 0.9,0.1,0.1 }
 local textcolor = { 1,1,1 }
 local onlyText = false
-local GetTalentPoints
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -150,6 +149,7 @@ function NugEnergy.Initialize(self)
         self.initialized = true
     end
     self:UPDATE_STEALTH()
+    self:UNIT_POWER(nil, "player", PowerFilter)
     return true
 end
 
@@ -293,9 +293,11 @@ function NugEnergy.SlashCmd(msg)
     )end
     if k == "unlock" then
         NugEnergy:EnableMouse(true)
+        NugEnergy:Show()
     end
     if k == "lock" then
         NugEnergy:EnableMouse(false)
+        NugEnergy:UPDATE_STEALTH()
     end
     if k == "markadd" then
         local p = ParseOpts(v)
