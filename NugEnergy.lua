@@ -4,6 +4,7 @@ local height = 30
 local font = [[Interface\AddOns\NugEnergy\Emblem.ttf]]
 local fontSize = 25
 local color = { 0.9,0.1,0.1 }
+local color2 = { .9,0.1,0.4 } -- for dispatch and meta
 local textcolor = { 1,1,1 }
 local onlyText = false
 
@@ -18,6 +19,7 @@ local UnitPower = UnitPower
 local math_modf = math.modf
 
 local PowerFilter
+local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
 
@@ -27,7 +29,7 @@ local defaults = {
     marks = {},
     focus = true,
     rage = false,
-    demonic = false,
+    demonic = true,
     runic = false,
 }
 
@@ -81,8 +83,8 @@ function NugEnergy.Initialize(self)
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
             if UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
-                self:SetStatusBarColor(.9,0.1,0.4)
-                self.bg:SetVertexColor(.9*.5,.1*.5,.4*.5)
+                self:SetStatusBarColor(unpack(color2))
+                self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
             else
                 self:SetStatusBarColor(unpack(color))
                 self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
@@ -114,12 +116,32 @@ function NugEnergy.Initialize(self)
         GetPower = function(unit) return UnitPower(unit, SPELL_POWER_DEMONIC_FURY) end
         GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_DEMONIC_FURY) end
         PowerFilter = "DEMONIC_FURY"
+        local metaStatus
+        self.UNIT_AURA = function(self, event, unit)
+            if unit ~= "player" then return end
+            local current = ( UnitAura("player", GetSpellInfo(WARLOCK_METAMORPHOSIS), nil, "HELPFUL") ~= nil)
+            if metaStatus == current  then return end
+            metaStatus = current
+            if current then
+                ForcedToShow = true
+                self:SetStatusBarColor(unpack(color2))
+                self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
+            else
+                ForcedToShow = nil
+                self:SetStatusBarColor(unpack(color))
+                self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
+            end
+            self:UPDATE_STEALTH()
+        end
+
         self.SPELLS_CHANGED = function(self)
             if GetSpecialization() == 2 then
                 self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_AURA")
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
             else
                 self:UnregisterEvent("UNIT_POWER")
+                self:UnregisterEvent("UNIT_AURA")
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
                 self:Hide()
             end
@@ -173,7 +195,7 @@ function NugEnergy.UNIT_MAXPOWER(self)
     self:SetMinMaxValues(0,GetPowerMax("player"))
 end
 function NugEnergy.UPDATE_STEALTH(self)
-    if (IsStealthed() or UnitAffectingCombat("player")) and PowerFilter then
+    if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:Show()
@@ -293,10 +315,12 @@ function NugEnergy.SlashCmd(msg)
     )end
     if k == "unlock" then
         NugEnergy:EnableMouse(true)
-        NugEnergy:Show()
+        ForcedToShow = true
+        NugEnergy:UPDATE_STEALTH()
     end
     if k == "lock" then
         NugEnergy:EnableMouse(false)
+        ForcedToShow = nil
         NugEnergy:UPDATE_STEALTH()
     end
     if k == "markadd" then
