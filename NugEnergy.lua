@@ -124,12 +124,16 @@ function NugEnergy.Initialize(self)
             metaStatus = current
             if current then
                 ForcedToShow = true
+                if not onlyText then
                 self:SetStatusBarColor(unpack(color2))
                 self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
+                end
             else
                 ForcedToShow = nil
+                if not onlyText then
                 self:SetStatusBarColor(unpack(color))
                 self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
+                end
             end
             self:UPDATE_STEALTH()
         end
