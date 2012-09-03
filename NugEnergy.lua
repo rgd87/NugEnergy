@@ -69,6 +69,11 @@ function NugEnergy.Initialize(self)
     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
 
+    if not self.initialized then
+        self:Create()
+        self.initialized = true
+    end
+
     local class = select(2,UnitClass("player"))
     if class == "ROGUE" then
         PowerFilter = "ENERGY"
@@ -104,10 +109,20 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
         self.UNIT_DISPLAYPOWER = function(self)
-            if select(2,UnitPowerType("player")) == "ENERGY" then
+            local newPowerType = select(2,UnitPowerType("player"))
+            if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
-            elseif NugEnergyDB.rage then
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                self:SetScript("OnUpdate",self.UpdateEnergy)
+            elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                self:SetScript("OnUpdate", nil)
+            else
+                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                PowerFilter = nil
+                self:SetScript("OnUpdate", nil)
+                self:Hide()
             end
             self:UPDATE_STEALTH()
         end
@@ -170,10 +185,6 @@ function NugEnergy.Initialize(self)
         return false
     end
     
-    if not self.initialized then
-        self:Create()
-        self.initialized = true
-    end
     self:UPDATE_STEALTH()
     self:UNIT_POWER(nil, "player", PowerFilter)
     return true
