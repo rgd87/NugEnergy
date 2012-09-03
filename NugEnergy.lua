@@ -29,7 +29,7 @@ local defaults = {
     marks = {},
     focus = true,
     rage = false,
-    demonic = true,
+    demonic = false,
     runic = false,
 }
 
