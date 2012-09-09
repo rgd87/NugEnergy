@@ -126,9 +126,6 @@ function NugEnergy.Initialize(self)
         end
         self:UNIT_DISPLAYPOWER()
     elseif class == "WARLOCK" and NugEnergyDB.demonic then
-        GetPower = function(unit) return UnitPower(unit, SPELL_POWER_DEMONIC_FURY) end
-        GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_DEMONIC_FURY) end
-        PowerFilter = "DEMONIC_FURY"
         local metaStatus
         self.UNIT_AURA = function(self, event, unit)
             if unit ~= "player" then return end
@@ -151,18 +148,37 @@ function NugEnergy.Initialize(self)
             self:UPDATE_STEALTH()
         end
 
+        self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
+            if not spec then return end
+            self:UnregisterEvent("UNIT_AURA")
+            -- self:RegisterEvent("UNIT_POWER")
             if spec == 2 then
-                self:RegisterEvent("UNIT_POWER")
+                GetPower = function(unit) return UnitPower(unit, SPELL_POWER_DEMONIC_FURY) end
+                GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_DEMONIC_FURY) end
+                -- self:RealignMarks({200})
+                PowerFilter = "DEMONIC_FURY"
                 self:RegisterEvent("UNIT_AURA")
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            else
-                self:UnregisterEvent("UNIT_POWER")
-                self:UnregisterEvent("UNIT_AURA")
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                self:Hide()
+                -- self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            elseif spec == 3 then
+                GetPower = function(unit)
+                    local power = UnitPower(unit, SPELL_POWER_BURNING_EMBERS, true)
+                    return power, floor(power / MAX_POWER_PER_EMBER)
+                end
+                GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_BURNING_EMBERS, true) end
+                -- self:RealignMarks({1,2,3, GetPowerMax("player") == 40 and 4 or nil})
+                PowerFilter = "BURNING_EMBERS"
+                -- self:UnregisterEvent("UNIT_POWER")
+                -- self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                -- self:Hide()
+            elseif spec == 1 then
+                GetPower = function(unit) return UnitPower(unit, SPELL_POWER_SOUL_SHARDS) end
+                GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_SOUL_SHARDS) end
+                -- self:RealignMarks({1,2,3, GetPowerMax("player") == 4 and 4 or nil})
+                PowerFilter = "SOUL_SHARDS"
             end
+            self:UNIT_MAXPOWER()
         end
         self:SPELLS_CHANGED()
     elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
@@ -207,6 +223,9 @@ function NugEnergy.UpdateEnergy(self)
 end
 function NugEnergy.UNIT_MAXPOWER(self)
     self:SetMinMaxValues(0,GetPowerMax("player"))
+    for _, mark in pairs(self.marks) do
+        mark:Update()
+    end
 end
 function NugEnergy.UPDATE_STEALTH(self)
     if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
@@ -238,13 +257,13 @@ function NugEnergy.Create(self)
     bg:SetVertexColor(color[1]/2,color[3]/2,color[3]/2)
     bg:SetAllPoints(f)
     f.bg = bg
-    f:UNIT_MAXPOWER()
-    
-    -- NEW MARKS
     self.marks = {}
+    f:UNIT_MAXPOWER()
+    -- NEW MARKS
     for p in pairs(NugEnergyDB.marks) do
         self:CreateMark(p)
     end
+
 --~     -- MARKS
 --~     local f2 = CreateFrame("Frame",nil,f)
 --~     f2:SetWidth(height)--*.8
@@ -428,4 +447,29 @@ function NugEnergy.CreateMark(self, at)
         self.marks[at] = m
 
         return m
+end
+
+
+function NugEnergy:RealignMarks(t)
+    local old_pos = {}
+    for k,v in pairs(self.marks) do
+        table.insert(old_pos, k)
+    end
+    local len = math.max(#t, #old_pos)
+    for i=1,len do
+        local v = old_pos[i]
+        if not v then
+            self:CreateMark(t[i])
+        else
+            local mark = self.marks[v]
+            if not t[i] then
+                mark:Hide()
+            else
+                local new = t[i]
+                mark.position = new
+                self.marks[v] = nil
+                self.makrs[new] = mark
+            end
+        end
+    end
 end
