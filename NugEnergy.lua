@@ -14,7 +14,7 @@ NugEnergy:SetScript("OnEvent", function(self, event, ...)
 	return self[event](self, event, ...)
 end)
 
-NugEnergy:RegisterEvent("ADDON_LOADED")
+NugEnergy:RegisterEvent("PLAYER_LOGIN")
 local UnitPower = UnitPower
 local math_modf = math.modf
 
@@ -47,9 +47,7 @@ local function SetupDefaults(t, defaults)
     end
 end
 
-function NugEnergy.ADDON_LOADED(self,event,arg1)
-    if arg1 ~= "NugEnergy" then return end  
-
+function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB = NugEnergyDB or {}
     SetupDefaults(NugEnergyDB, defaults)
 
@@ -154,7 +152,8 @@ function NugEnergy.Initialize(self)
         end
 
         self.SPELLS_CHANGED = function(self)
-            if GetSpecialization() == 2 then
+            local spec = GetSpecialization()
+            if spec == 2 then
                 self:RegisterEvent("UNIT_POWER")
                 self:RegisterEvent("UNIT_AURA")
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
