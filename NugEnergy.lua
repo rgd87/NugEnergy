@@ -3,9 +3,10 @@ local width = 100
 local height = 30
 local font = [[Interface\AddOns\NugEnergy\Emblem.ttf]]
 local fontSize = 25
-local color = { 0.9,0.1,0.1 }
-local color2 = { .9,0.1,0.4 } -- for dispatch and meta
-local textcolor = { 1,1,1 }
+local color = { 0.9, 0.1, 0.1 }
+local color2 = { .9, 0.1, 0.4 } -- for dispatch and meta
+local textcolor = {1,1,1}
+local textoutline = false
 local onlyText = false
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
@@ -305,12 +306,11 @@ function NugEnergy.Create(self)
     end -- endif not onlyText
     
     local text = f:CreateFontString(nil, "OVERLAY")
-    text:SetFont(font,fontSize)
+    text:SetFont(font,fontSize, textoutline and "OUTLINE")
     text:SetPoint("TOPLEFT",f,"TOPLEFT",0,0)
     text:SetPoint("BOTTOMRIGHT",f,"BOTTOMRIGHT",-10,0)
     text:SetJustifyH("RIGHT")
     text:SetTextColor(unpack(textcolor))
-    text:SetVertexColor(1,1,1)
     f.text = text
     
     f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
