@@ -224,6 +224,7 @@ function NugEnergy.UpdateEnergy(self)
 end
 function NugEnergy.UNIT_MAXPOWER(self)
     self:SetMinMaxValues(0,GetPowerMax("player"))
+    if not self.marks then return end
     for _, mark in pairs(self.marks) do
         mark:Update()
     end
@@ -258,7 +259,7 @@ function NugEnergy.Create(self)
     bg:SetVertexColor(color[1]/2,color[3]/2,color[3]/2)
     bg:SetAllPoints(f)
     f.bg = bg
-    self.marks = {}
+    f.marks = {}
     f:UNIT_MAXPOWER()
     -- NEW MARKS
     for p in pairs(NugEnergyDB.marks) do
