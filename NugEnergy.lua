@@ -7,15 +7,23 @@ local color = { 0.9, 0.1, 0.1 }
 local color2 = { .9, 0.1, 0.4 } -- for dispatch and meta
 local textcolor = {1,1,1}
 local textoutline = false
+local vertical = false
+if vertical then
+    fontSize = 15
+    width = 80
+    tex = [[Interface\AddOns\NugEnergy\vstatusbar.tga]]
+end
 local onlyText = false
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
 NugEnergy:SetScript("OnEvent", function(self, event, ...)
+    -- print(event, unpack{...})
 	return self[event](self, event, ...)
 end)
 
 NugEnergy:RegisterEvent("PLAYER_LOGIN")
+NugEnergy:RegisterEvent("PLAYER_LOGOUT")
 local UnitPower = UnitPower
 local math_modf = math.modf
 
@@ -29,7 +37,8 @@ local defaults = {
     x = 0, y = 0,
     marks = {},
     focus = true,
-    rage = false,
+    rage = true,
+    monk = true,
     demonic = false,
     runic = false,
 }
@@ -47,6 +56,20 @@ local function SetupDefaults(t, defaults)
         end
     end
 end
+local function RemoveDefaults(t, defaults)
+    for k, v in pairs(defaults) do
+        if type(t[k]) == 'table' and type(v) == 'table' then
+            RemoveDefaults(t[k], v)
+            if next(t[k]) == nil then
+                t[k] = nil
+            end
+        elseif t[k] == v then
+            t[k] = nil
+        end
+    end
+    return t
+end
+
 
 function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB = NugEnergyDB or {}
@@ -59,7 +82,15 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     SlashCmdList["NUGENERGY"] = self.SlashCmd
 end
 
+function NugEnergy.PLAYER_LOGOUT(self, event)
+    RemoveDefaults( NugEnergyDB, defaults)
+end
 
+
+local GetPowerBy5 = function(unit)
+    local p = UnitPower(unit)
+    return p, math_modf(p/5)*5
+end
 function NugEnergy.Initialize(self)
     self:RegisterEvent("UNIT_POWER")
     self:RegisterEvent("UNIT_MAXPOWER")
@@ -78,10 +109,7 @@ function NugEnergy.Initialize(self)
         PowerFilter = "ENERGY"
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-        GetPower = function(unit)
-            local p = UnitPower(unit)
-            return p, math_modf(p/5)*5
-        end
+        GetPower = GetPowerBy5
         self:RegisterEvent("SPELLS_CHANGED")
 
         self.UNIT_HEALTH = function(self, event, unit)
@@ -111,12 +139,33 @@ function NugEnergy.Initialize(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
+                GetPower = GetPowerBy5
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
+                GetPower = UnitPower
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
+            else
+                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                PowerFilter = nil
+                self:SetScript("OnUpdate", nil)
+                self:Hide()
+            end
+            self:UPDATE_STEALTH()
+        end
+        self:UNIT_DISPLAYPOWER()
+    elseif class == "MONK" and NugEnergyDB.monk then
+        self:RegisterEvent("UNIT_DISPLAYPOWER")
+        self:SetScript("OnUpdate",self.UpdateEnergy)
+        self.UNIT_DISPLAYPOWER = function(self)
+            local newPowerType = select(2,UnitPowerType("player"))
+            if newPowerType == "ENERGY" then
+                PowerFilter = "ENERGY"
+                GetPower = GetPowerBy5
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                self:SetScript("OnUpdate",self.UpdateEnergy)
             else
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
                 PowerFilter = nil
@@ -186,6 +235,24 @@ function NugEnergy.Initialize(self)
         PowerFilter = "RUNIC_POWER"
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
+        GetPower = function(unit)
+            local p = UnitPower(unit)
+            local pmax = UnitPowerMax(unit)
+            local shine = p >= pmax-10
+            return p, nil, shine
+        end
+        self.UNIT_HEALTH = function(self, event, unit)
+            if unit ~= "target" then return end
+            if UnitHealth(unit)/UnitHealthMax(unit) < 0.2 then
+                self:SetStatusBarColor(unpack(color2))
+                self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
+            else
+                self:SetStatusBarColor(unpack(color))
+                self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
+            end
+        end
+        self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
+        self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
     elseif class == "HUNTER" and NugEnergyDB.focus then
 
         PowerFilter = "FOCUS"
@@ -213,10 +280,17 @@ function NugEnergy.UNIT_POWER(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
 function NugEnergy.UpdateEnergy(self)
-    local p, p2 = GetPower("player")
+    local p, p2, shine = GetPower("player")
     p2 = p2 or p
     self.text:SetText(p2)
     if not onlyText then
+        if shine then
+            -- self.glow:Show()
+            if not self.glow:IsPlaying() then self.glow:Play() end
+        else
+            -- self.glow:Hide()
+            self.glow:Stop()
+        end
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
         if self.marks[p] then self.marks[p].shine:Play() end
@@ -241,6 +315,10 @@ end
 
 function NugEnergy.Create(self)
     local f = self
+    if vertical then
+        height, width = width, height
+        f:SetOrientation("VERTICAL")
+    end
     f:SetWidth(width)
     f:SetHeight(height)
     
@@ -258,6 +336,7 @@ function NugEnergy.Create(self)
     bg:SetTexture(tex)
     bg:SetVertexColor(color[1]/2,color[3]/2,color[3]/2)
     bg:SetAllPoints(f)
+
     f.bg = bg
     f.marks = {}
     f:UNIT_MAXPOWER()
@@ -265,6 +344,48 @@ function NugEnergy.Create(self)
     for p in pairs(NugEnergyDB.marks) do
         self:CreateMark(p)
     end
+
+    -- local glow = f:CreateTexture(nil,"OVERLAY")
+    -- glow:SetAllPoints(f)
+    -- glow:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
+    -- glow:SetAlpha(0)
+
+    -- local ag = glow:CreateAnimationGroup()
+    -- ag:SetLooping("BOUNCE")
+    -- local a1 = ag:CreateAnimation("Alpha")
+    -- a1:SetChange(0.1)
+    -- a1:SetDuration(0.2)
+    -- a1:SetOrder(1)
+    
+    local at = f:CreateTexture(nil,"BACKGROUND", nil, -1)
+    at:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
+    at:SetVertexColor(unpack(color))
+    at:SetTexCoord(0.00781250,0.50781250,0.27734375,0.52734375)
+    --at:SetTexture([[Interface\AchievementFrame\UI-Achievement-IconFrame]])
+    --at:SetTexCoord(0,0.5625,0,0.5625)
+    local hmul,vmul = 1.5, 1.8
+    if vertical then hmul, vmul = vmul, hmul end
+    at:SetWidth(width*hmul)
+    at:SetHeight(height*vmul)
+    at:SetPoint("CENTER",self,"CENTER",0,0)
+    at:SetAlpha(0)
+    
+    local sag = at:CreateAnimationGroup()
+    sag:SetLooping("BOUNCE")
+    local sa1 = sag:CreateAnimation("Alpha")
+    sa1:SetChange(1)
+    sa1:SetDuration(0.3)
+    sa1:SetOrder(1)
+    -- local sa2 = sag:CreateAnimation("Alpha")
+    -- sa2:SetChange(-1)
+    -- sa2:SetDuration(0.5)
+    -- sa2:SetSmoothing("OUT")
+    -- sa2:SetOrder(2)
+    -- 
+    -- f.shine = sag
+
+    self.glow = sag
+    self.glowtex = glow
 
 --~     -- MARKS
 --~     local f2 = CreateFrame("Frame",nil,f)
@@ -308,9 +429,16 @@ function NugEnergy.Create(self)
     
     local text = f:CreateFontString(nil, "OVERLAY")
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
-    text:SetPoint("TOPLEFT",f,"TOPLEFT",0,0)
-    text:SetPoint("BOTTOMRIGHT",f,"BOTTOMRIGHT",-10,0)
-    text:SetJustifyH("RIGHT")
+    if vertical then
+        text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
+        text:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0,0)
+        text:SetJustifyH("CENTER")
+        text:SetJustifyV("TOP")
+    else
+        text:SetPoint("TOPLEFT",f,"TOPLEFT",0,0)
+        text:SetPoint("BOTTOMRIGHT",f,"BOTTOMRIGHT",-10,0)
+        text:SetJustifyH("RIGHT")
+    end
     text:SetTextColor(unpack(textcolor))
     f.text = text
     
