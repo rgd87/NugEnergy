@@ -5,6 +5,7 @@ local font = [[Interface\AddOns\NugEnergy\Emblem.ttf]]
 local fontSize = 25
 local color = { 0.9, 0.1, 0.1 }
 local color2 = { .9, 0.1, 0.4 } -- for dispatch and meta
+local color3 = { 131/255, 0.2, 0.2 } --max color
 local textcolor = {1,1,1}
 local textoutline = false
 local vertical = false
@@ -111,7 +112,6 @@ function NugEnergy.Initialize(self)
         self:SetScript("OnUpdate",self.UpdateEnergy)
         GetPower = GetPowerBy5
         self:RegisterEvent("SPELLS_CHANGED")
-
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
             if UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
@@ -235,21 +235,17 @@ function NugEnergy.Initialize(self)
         PowerFilter = "RUNIC_POWER"
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
+        local execute = false
         GetPower = function(unit)
             local p = UnitPower(unit)
             local pmax = UnitPowerMax(unit)
-            local shine = p >= pmax-10
-            return p, nil, shine
+            local shine = p >= pmax-30
+            local capped = p >= pmax-10
+            return p, nil, execute, shine, capped
         end
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
-            if UnitHealth(unit)/UnitHealthMax(unit) < 0.2 then
-                self:SetStatusBarColor(unpack(color2))
-                self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
-            else
-                self:SetStatusBarColor(unpack(color))
-                self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
-            end
+            execute = UnitHealth(unit)/UnitHealthMax(unit) < 0.2
         end
         self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
         self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -280,7 +276,7 @@ function NugEnergy.UNIT_POWER(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
 function NugEnergy.UpdateEnergy(self)
-    local p, p2, shine = GetPower("player")
+    local p, p2, execute, shine, capped = GetPower("player")
     p2 = p2 or p
     self.text:SetText(p2)
     if not onlyText then
@@ -290,6 +286,19 @@ function NugEnergy.UpdateEnergy(self)
         else
             -- self.glow:Hide()
             self.glow:Stop()
+        end
+        if capped then
+            self:SetStatusBarColor(unpack(color3))
+            self.bg:SetVertexColor(color3[1]*.5,color3[2]*.5,color3[3]*.5)
+            self.glowanim:SetDuration(0.15)
+        elseif execute then
+            self:SetStatusBarColor(unpack(color2))
+            self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
+            self.glowanim:SetDuration(0.3)
+        else
+            self:SetStatusBarColor(unpack(color))
+            self.bg:SetVertexColor(color[1]*.5,color[2]*.5,color[3]*.5)
+            self.glowanim:SetDuration(0.3)
         end
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
@@ -385,6 +394,7 @@ function NugEnergy.Create(self)
     -- f.shine = sag
 
     self.glow = sag
+    self.glowanim = sa1
     self.glowtex = glow
 
 --~     -- MARKS
