@@ -41,7 +41,7 @@ local defaults = {
     rage = true,
     monk = true,
     demonic = false,
-    runic = false,
+    runic = true,
 }
 
 local function SetupDefaults(t, defaults)
@@ -233,6 +233,21 @@ function NugEnergy.Initialize(self)
         self:SPELLS_CHANGED()
     elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
         PowerFilter = "RUNIC_POWER"
+        local execute = false
+        GetPower = function(unit)
+            local p = UnitPower(unit)
+            local pmax = UnitPowerMax(unit)
+            local shine = p >= pmax-30
+            local capped = p >= pmax-10
+            return p, nil, execute, shine, capped
+        end
+        self.UNIT_HEALTH = function(self, event, unit)
+            if unit ~= "target" then return end
+            execute = UnitHealth(unit)/UnitHealthMax(unit) < 0.35
+            self:UpdateEnergy()
+        end
+        self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
+        self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
         local execute = false
@@ -246,6 +261,7 @@ function NugEnergy.Initialize(self)
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
             execute = UnitHealth(unit)/UnitHealthMax(unit) < 0.2
+            self:UpdateEnergy()
         end
         self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
         self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -479,8 +495,9 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen reset|r
       |cff00ff00/nen rage|r 
       |cff00ff00/nen focus|r
-      |cff00ff00/nen runic|r - Enable for Runic Power
-      |cff00ff00/nen demonic|r - for Warlock's Demonic Fury 
+      |cff00ff00/nen monk|r
+      |cff00ff00/nen runic|r
+      |cff00ff00/nen demonic|r - DemonicFury/Shards/Embers
       |cff00ff00/nen markadd at=35|r
       |cff00ff00/nen markdel at=35|r
       |cff00ff00/nen marklist|r]]
@@ -523,6 +540,10 @@ function NugEnergy.SlashCmd(msg)
     end
     if k == "rage" then
         NugEnergyDB.rage = not NugEnergyDB.rage
+        NugEnergy:Initialize()
+    end
+    if k == "monk" then
+        NugEnergyDB.monk = not NugEnergyDB.monk
         NugEnergy:Initialize()
     end
     if k == "focus" then
