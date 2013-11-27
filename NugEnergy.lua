@@ -44,6 +44,8 @@ local defaults = {
     runic = true,
 }
 
+local free_marks = {} -- for unused mark frames
+
 local function SetupDefaults(t, defaults)
     for k,v in pairs(defaults) do
         if type(v) == "table" then
@@ -75,6 +77,10 @@ end
 function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB = NugEnergyDB or {}
     SetupDefaults(NugEnergyDB, defaults)
+
+    NugEnergyDB_Character = NugEnergyDB_Character or {}
+    NugEnergyDB_Character.marks = NugEnergyDB_Character.marks or { [0] = {}, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
+    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
 
     NugEnergy:Initialize()
     
@@ -114,7 +120,7 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("SPELLS_CHANGED")
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
-            if UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
+            if UnitExists(unit) and UnitHealth(unit)/UnitHealthMax(unit) < 0.35 then
                 self:SetStatusBarColor(unpack(color2))
                 self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
             else
@@ -287,7 +293,6 @@ end
 
 
 
-
 function NugEnergy.UNIT_POWER(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
@@ -338,6 +343,25 @@ function NugEnergy.UPDATE_STEALTH(self)
     end
 end
 
+
+function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
+    NugEnergy:ReconfigureMarks()
+end
+function NugEnergy.ReconfigureMarks(self)
+    local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
+    for at, frame in pairs(NugEnergy.marks) do
+        frame:Hide()
+        table.insert(free_marks, frame)
+        NugEnergy.marks[at] = nil
+        -- print("Hiding", at)
+    end
+    for at in pairs(spec_marks) do
+        -- print("Showing", at)
+        NugEnergy:CreateMark(at)
+    end
+    -- NugEnergy:RealignMarks()
+end
+
 function NugEnergy.Create(self)
     local f = self
     if vertical then
@@ -366,9 +390,10 @@ function NugEnergy.Create(self)
     f.marks = {}
     f:UNIT_MAXPOWER()
     -- NEW MARKS
-    for p in pairs(NugEnergyDB.marks) do
-        self:CreateMark(p)
-    end
+    -- for p in pairs(NugEnergyDB_Character.marks) do
+    --     self:CreateMark(p)
+    -- end
+    NugEnergy:ReconfigureMarks()
 
     -- local glow = f:CreateTexture(nil,"OVERLAY")
     -- glow:SetAllPoints(f)
@@ -516,7 +541,7 @@ function NugEnergy.SlashCmd(msg)
         local p = ParseOpts(v)
         local at = p["at"]
         if at then
-            NugEnergyDB.marks[at] = true
+            NugEnergyDB_Character.marks[GetSpecialization() or 0][at] = true
             NugEnergy:CreateMark(at)
         end
     end
@@ -524,9 +549,10 @@ function NugEnergy.SlashCmd(msg)
         local p = ParseOpts(v)
         local at = p["at"]
         if at then
-            NugEnergyDB.marks[at] = nil
-            NugEnergy.marks[at]:Hide()
-            NugEnergy.marks[at] = nil
+            NugEnergyDB_Character.marks[GetSpecialization() or 0][at] = nil
+            NugEnergy:ReconfigureMarks()
+            -- NugEnergy.marks[at]:Hide()
+            -- NugEnergy.marks[at] = nil
         end
     end
     if k == "marklist" then
@@ -566,7 +592,17 @@ local UpdateMark = function(self)
     local pos = self.position / max * bar:GetWidth()
     self:SetPoint("CENTER",bar,"LEFT",pos,0)
 end
+
+
 function NugEnergy.CreateMark(self, at)
+        if next(free_marks) then
+            local frame = table.remove(free_marks)
+            self.marks[at] = frame
+            frame.position = at
+            frame:Show()
+            return
+        end
+
         local m = CreateFrame("Frame",nil,self)
         m:SetWidth(2)
         m:SetHeight(self:GetHeight())
