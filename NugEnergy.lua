@@ -1,4 +1,5 @@
 local tex = [[Interface\AddOns\NugEnergy\statusbar.tga]]
+-- local tex = "Interface\\TargetingFrame\\UI-StatusBar"
 local width = 100
 local height = 30
 local font = [[Interface\AddOns\NugEnergy\Emblem.ttf]]
@@ -6,6 +7,8 @@ local fontSize = 25
 local color = { 0.9, 0.1, 0.1 }
 local color2 = { .9, 0.1, 0.4 } -- for dispatch and meta
 local color3 = { 131/255, 0.2, 0.2 } --max color
+local lunar = { 0.6, 0, 1 }
+local solar = {1,66/255,0}
 local textcolor = {1,1,1}
 local textoutline = false
 local vertical = false
@@ -149,25 +152,65 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
+        local _UpdateEnergyOriginal = self.UpdateEnergy
+        local _UPDATE_STEALTH = self.UPDATE_STEALTH
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
+                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_MAXPOWER")
+                self.UPDATE_STEALTH = _UPDATE_STEALTH
+                self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                self.UpdateEnergy = _UpdateEnergyOriginal
                 GetPower = GetPowerBy5
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
+                self:UPDATE_STEALTH()
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
+                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_MAXPOWER")
+                self.UPDATE_STEALTH = _UPDATE_STEALTH
+                self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                self.UpdateEnergy = _UpdateEnergyOriginal
                 GetPower = RageBarGetPower
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
+                self:UPDATE_STEALTH()
             else
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                
+                self:UnregisterEvent("UNIT_POWER")
+                self:UnregisterEvent("UNIT_MAXPOWER")
                 PowerFilter = nil
-                self:SetScript("OnUpdate", nil)
-                self:Hide()
+                if GetSpecialization() == 1 then
+                    self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                    self.UpdateEnergy = self.UpdateEclipseEnergy
+                    GetPower = function(unit) return UnitPower(unit, SPELL_POWER_ECLIPSE ) end
+                    GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_ECLIPSE ) end
+                    self:UNIT_MAXPOWER()
+                    self.UPDATE_STEALTH = function(self)
+                        if UnitAffectingCombat("player") or GetPower("player") ~= 0 then
+                            self:Show()
+                        else
+                            self:Hide()
+                        end
+                    end
+                    self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                    self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                    self:SetScript("OnUpdate", self.UpdateEclipseEnergy)
+                    self:Show()
+                else
+                    self.UPDATE_STEALTH = _UPDATE_STEALTH
+                    self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                    self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                    self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                    self:SetScript("OnUpdate", nil)
+                    self:Hide()
+                end
             end
-            self:UPDATE_STEALTH()
         end
         self:UNIT_DISPLAYPOWER()
     elseif class == "MONK" and NugEnergyDB.monk then
@@ -257,7 +300,9 @@ function NugEnergy.Initialize(self)
         end
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
-            execute = UnitHealth(unit)/UnitHealthMax(unit) < 0.35
+            local uhm = UnitHealthMax(unit)
+            if uhm == 0 then uhm = 1 end
+            execute = UnitHealth(unit)/uhm < 0.35
             self:UpdateEnergy()
         end
         self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
@@ -274,7 +319,9 @@ function NugEnergy.Initialize(self)
         end
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
-            execute = UnitHealth(unit)/UnitHealthMax(unit) < 0.2
+            local uhm = UnitHealthMax(unit)
+            if uhm == 0 then uhm = 1 end
+            execute = UnitHealth(unit)/uhm < 0.2
             self:UpdateEnergy()
         end
         self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
@@ -334,6 +381,40 @@ function NugEnergy.UpdateEnergy(self)
         if self.marks[p] then self.marks[p].shine:Play() end
     end
 end
+
+local idleSince = nil
+function NugEnergy.UpdateEclipseEnergy(self)
+    local p = UnitPower( "player", SPELL_POWER_ECLIPSE )
+    local mp = UnitPowerMax( "player", SPELL_POWER_ECLIPSE )
+    local absp = math.abs(p)
+    self.text:SetText(absp)
+    if not onlyText then
+        if p <= 0 then
+            self:SetStatusBarColor(unpack(lunar))
+            self.bg:SetVertexColor(lunar[1]*.5,lunar[2]*.5,lunar[3]*.5)
+        else
+            self:SetStatusBarColor(unpack(solar))
+            self.bg:SetVertexColor(solar[1]*.5,solar[2]*.5,solar[3]*.5)
+        end
+        self:SetValue(absp)
+    end
+    if p == 0 and not UnitAffectingCombat("player") then
+        if not idleSince then
+            idleSince = GetTime()
+        else
+            if idleSince < GetTime()-3 then
+                self:Hide()
+                idleSince = nil
+            end
+        end
+    else
+        idleSince = nil
+    end
+end
+
+
+
+
 function NugEnergy.UNIT_MAXPOWER(self)
     self:SetMinMaxValues(0,GetPowerMax("player"))
     if not self.marks then return end
@@ -342,7 +423,7 @@ function NugEnergy.UNIT_MAXPOWER(self)
     end
 end
 function NugEnergy.UPDATE_STEALTH(self)
-    if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
+    if (IsStealthed() or UnitAffectingCombat("player") or ToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:Show()
@@ -354,6 +435,9 @@ end
 
 function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
     NugEnergy:ReconfigureMarks()
+    if NugEnergy.UNIT_DISPLAYPOWER then
+        NugEnergy:UNIT_DISPLAYPOWER()
+    end
 end
 function NugEnergy.ReconfigureMarks(self)
     local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
