@@ -153,18 +153,16 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-        self.OLD_UpdateEnergyOriginal = OLD_UpdateEnergyOriginal or self.UpdateEnergy
-        self.OLD_UPDATE_STEALTH = self.OLD_UPDATE_STEALTH or self.UPDATE_STEALTH
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
                 self:RegisterEvent("UNIT_POWER")
                 self:RegisterEvent("UNIT_MAXPOWER")
-                self.UPDATE_STEALTH = _UPDATE_STEALTH
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                self.UpdateEnergy = self.OLD_UpdateEnergyOriginal
+                self.UPDATE_STEALTH = self.__UPDATE_STEALTH                
+                self.UpdateEnergy = self.__UpdateEnergy
                 GetPower = GetPowerBy5
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -173,10 +171,10 @@ function NugEnergy.Initialize(self)
                 PowerFilter = "RAGE"
                 self:RegisterEvent("UNIT_POWER")
                 self:RegisterEvent("UNIT_MAXPOWER")
-                self.UPDATE_STEALTH = _UPDATE_STEALTH
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                self.UpdateEnergy = self.OLD_UpdateEnergyOriginal
+                self.UPDATE_STEALTH = self.__UPDATE_STEALTH
+                self.UpdateEnergy = self.__UpdateEnergy
                 GetPower = RageBarGetPower
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
@@ -204,7 +202,8 @@ function NugEnergy.Initialize(self)
                     self:SetScript("OnUpdate", self.UpdateEclipseEnergy)
                     self:Show()
                 else
-                    self.UPDATE_STEALTH = self.OLD_UPDATE_STEALTH
+                    self.UPDATE_STEALTH = self.__UPDATE_STEALTH
+                    self.UpdateEnergy = self.__UpdateEnergy
                     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                     self:UnregisterEvent("PLAYER_REGEN_DISABLED")
@@ -382,6 +381,7 @@ function NugEnergy.UpdateEnergy(self)
         if self.marks[p] then self.marks[p].shine:Play() end
     end
 end
+NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 
 local idleSince = nil
 function NugEnergy.UpdateEclipseEnergy(self)
@@ -432,7 +432,7 @@ function NugEnergy.UPDATE_STEALTH(self)
         self:Hide()
     end
 end
-
+NugEnergy.__UPDATE_STEALTH = NugEnergy.UPDATE_STEALTH
 
 function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
     NugEnergy:ReconfigureMarks()
