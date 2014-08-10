@@ -45,6 +45,7 @@ local defaults = {
     monk = true,
     demonic = false,
     runic = true,
+    balance = true,
 }
 
 local free_marks = {} -- for unused mark frames
@@ -152,8 +153,8 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-        local _UpdateEnergyOriginal = self.UpdateEnergy
-        local _UPDATE_STEALTH = self.UPDATE_STEALTH
+        self.OLD_UpdateEnergyOriginal = OLD_UpdateEnergyOriginal or self.UpdateEnergy
+        self.OLD_UPDATE_STEALTH = self.OLD_UPDATE_STEALTH or self.UPDATE_STEALTH
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
@@ -163,7 +164,7 @@ function NugEnergy.Initialize(self)
                 self.UPDATE_STEALTH = _UPDATE_STEALTH
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                self.UpdateEnergy = _UpdateEnergyOriginal
+                self.UpdateEnergy = self.OLD_UpdateEnergyOriginal
                 GetPower = GetPowerBy5
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -175,7 +176,7 @@ function NugEnergy.Initialize(self)
                 self.UPDATE_STEALTH = _UPDATE_STEALTH
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                self.UpdateEnergy = _UpdateEnergyOriginal
+                self.UpdateEnergy = self.OLD_UpdateEnergyOriginal
                 GetPower = RageBarGetPower
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
@@ -185,7 +186,7 @@ function NugEnergy.Initialize(self)
                 self:UnregisterEvent("UNIT_POWER")
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 PowerFilter = nil
-                if GetSpecialization() == 1 then
+                if GetSpecialization() == 1 and NugEnergyDB.balance then
                     self:RegisterEvent("PLAYER_REGEN_DISABLED")
                     self.UpdateEnergy = self.UpdateEclipseEnergy
                     GetPower = function(unit) return UnitPower(unit, SPELL_POWER_ECLIPSE ) end
@@ -203,7 +204,7 @@ function NugEnergy.Initialize(self)
                     self:SetScript("OnUpdate", self.UpdateEclipseEnergy)
                     self:Show()
                 else
-                    self.UPDATE_STEALTH = _UPDATE_STEALTH
+                    self.UPDATE_STEALTH = self.OLD_UPDATE_STEALTH
                     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                     self:UnregisterEvent("PLAYER_REGEN_DISABLED")
@@ -614,6 +615,7 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen focus|r
       |cff00ff00/nen monk|r
       |cff00ff00/nen runic|r
+      |cff00ff00/nen balance|r - Balance Druid Energy
       |cff00ff00/nen demonic|r - DemonicFury/Shards/Embers
       |cff00ff00/nen markadd at=35|r
       |cff00ff00/nen markdel at=35|r
@@ -674,6 +676,10 @@ function NugEnergy.SlashCmd(msg)
     end
     if k == "runic" then
         NugEnergyDB.runic = not NugEnergyDB.runic
+        NugEnergy:Initialize()
+    end
+    if k == "balance" then
+        NugEnergyDB.balance = not NugEnergyDB.balance
         NugEnergy:Initialize()
     end
 end
