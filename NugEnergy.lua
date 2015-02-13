@@ -7,6 +7,7 @@ local fontSize = 25
 local color = { 0.9, 0.1, 0.1 }
 local color2 = { .9, 0.1, 0.4 } -- for dispatch and meta
 local color3 = { 131/255, 0.2, 0.2 } --max color
+local color4 = { 141/255, 31/255, 62/255 } --low color
 local lunar = { 0.6, 0, 1 }
 local solar = {1,66/255,0}
 local textcolor = {1,1,1}
@@ -119,9 +120,12 @@ function NugEnergy.Initialize(self)
             local p = UnitPower(unit)
             local pmax = UnitPowerMax(unit)
             local shine = p >= pmax-30
+            -- local state
+            -- if p >= pmax-10 then state = "CAPPED" end
+            -- if GetSpecialization() == 3  p < 60 pmax-10
             local capped = p >= pmax-10
             return p, nil, execute, shine, capped
-        end
+    end
 
     local class = select(2,UnitClass("player"))
     if class == "ROGUE" then
@@ -220,7 +224,16 @@ function NugEnergy.Initialize(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
-                GetPower = GetPowerBy5
+                -- GetPower = GetPowerBy5
+                GetPower = function(unit)
+                    local p, p2 = GetPowerBy5(unit)
+                    local pmax = UnitPowerMax(unit)
+                    -- local shine = p >= pmax-30
+                    local capped = p == pmax
+                    local insufficient
+                    if p < 40 and GetSpecialization() == 1 then insufficient = true end
+                    return p, p2, execute, shine, capped, insufficient
+                end
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
             else
@@ -310,12 +323,18 @@ function NugEnergy.Initialize(self)
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
         local execute = false
+        local GetSpecialization = GetSpecialization
+        local GetShapeshiftForm = GetShapeshiftForm
         GetPower = function(unit)
             local p = UnitPower(unit)
             local pmax = UnitPowerMax(unit)
             local shine = p >= pmax-30
             local capped = p >= pmax-10
-            return p, nil, execute, shine, capped
+            local insufficient
+            -- local state
+            -- if p >= pmax-10 then state = "CAPPED" end
+            if p < 60 and GetSpecialization() == 3 and GetShapeshiftForm() == 2 then insufficient = true end
+            return p, nil, execute, shine, capped, insufficient
         end
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
@@ -352,7 +371,7 @@ function NugEnergy.UNIT_POWER(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
 function NugEnergy.UpdateEnergy(self)
-    local p, p2, execute, shine, capped = GetPower("player")
+    local p, p2, execute, shine, capped, insufficient = GetPower("player")
     p2 = p2 or p
     self.text:SetText(p2)
     if not onlyText then
@@ -370,6 +389,10 @@ function NugEnergy.UpdateEnergy(self)
         elseif execute then
             self:SetStatusBarColor(unpack(color2))
             self.bg:SetVertexColor(color2[1]*.5,color2[2]*.5,color2[3]*.5)
+            self.glowanim:SetDuration(0.3)
+        elseif insufficient then
+            self:SetStatusBarColor(unpack(color4))
+            self.bg:SetVertexColor(color4[1]*.5,color4[2]*.5,color4[3]*.5)
             self.glowanim:SetDuration(0.3)
         else
             self:SetStatusBarColor(unpack(color))
@@ -424,7 +447,7 @@ function NugEnergy.UNIT_MAXPOWER(self)
     end
 end
 function NugEnergy.UPDATE_STEALTH(self)
-    if (IsStealthed() or UnitAffectingCombat("player") or ToShow) and PowerFilter then
+    if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:Show()
