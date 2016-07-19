@@ -1,4 +1,4 @@
-## Interface: 60000
+## Interface: 70000
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87

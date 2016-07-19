@@ -44,9 +44,12 @@ local defaults = {
     focus = true,
     rage = true,
     monk = true,
+    fury = true,
     demonic = false,
     runic = true,
     balance = true,
+    insanity = true,
+    maelstrom = true
 }
 
 local free_marks = {} -- for unused mark frames
@@ -88,7 +91,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
 
     NugEnergy:Initialize()
-    
+
     SLASH_NUGENERGY1= "/nugenergy"
     SLASH_NUGENERGY2= "/nen"
     SlashCmdList["NUGENERGY"] = self.SlashCmd
@@ -153,6 +156,41 @@ function NugEnergy.Initialize(self)
             end
         end
         self:SPELLS_CHANGED()
+    elseif class == "PRIEST" and NugEnergyDB.insanity then
+        PowerFilter = "INSANITY"
+        local voidform = false
+        local InsanityBarGetPower = function(unit)
+            local p = UnitPower(unit)
+            local pmax = UnitPowerMax(unit)
+            local shine = p == pmax
+            -- local state
+            -- if p >= pmax-10 then state = "CAPPED" end
+            -- if GetSpecialization() == 3  p < 60 pmax-10
+            local capped = p == pmax
+            return p, nil, voidform, shine, capped
+        end
+        self.UNIT_AURA = function(self, event, unit)
+            if unit ~= "player" then return end
+            voidform = ( UnitAura("player", GetSpellInfo(194249), nil, "HELPFUL") ~= nil)
+            self:UpdateEnergy()
+        end
+        GetPower = InsanityBarGetPower
+
+        self.SPELLS_CHANGED = function(self)
+            if GetSpecialization() == 3 then
+                self:RegisterEvent("UNIT_MAXPOWER")
+                self:RegisterEvent("UNIT_POWER_FREQUENT");
+                self:RegisterEvent("UNIT_AURA");
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            else
+                self:UnregisterEvent("UNIT_MAXPOWER")
+                self:UnregisterEvent("UNIT_POWER_FREQUENT");
+                self:UnregisterEvent("UNIT_AURA");
+                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                -- self:SetScript("OnUpdate", nil)
+            end
+        end
+        self:SPELLS_CHANGED()
     elseif class == "DRUID" then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:RegisterEvent("UPDATE_STEALTH")
@@ -165,8 +203,8 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                self.UPDATE_STEALTH = self.__UPDATE_STEALTH                
-                self.UpdateEnergy = self.__UpdateEnergy
+                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
+                -- self.UpdateEnergy = self.__UpdateEnergy
                 GetPower = GetPowerBy5
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -177,46 +215,74 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                self.UpdateEnergy = self.__UpdateEnergy
+                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
+                -- self.UpdateEnergy = self.__UpdateEnergy
                 GetPower = RageBarGetPower
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
+            elseif GetSpecialization() == 1 then
+                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_MAXPOWER")
+                PowerFilter = "LUNAR_POWER"
+                self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
+                -- self.UpdateEnergy = self.__UpdateEnergy
+                GetPower = UnitPower
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                self:SetScript("OnUpdate", nil)
+                self:UPDATE_STEALTH()
             else
-                
                 self:UnregisterEvent("UNIT_POWER")
                 self:UnregisterEvent("UNIT_MAXPOWER")
-                PowerFilter = nil
-                if GetSpecialization() == 1 and NugEnergyDB.balance then
-                    self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                    self.UpdateEnergy = self.UpdateEclipseEnergy
-                    GetPower = function(unit) return UnitPower(unit, SPELL_POWER_ECLIPSE ) end
-                    GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_ECLIPSE ) end
-                    self:UNIT_MAXPOWER()
-                    self.UPDATE_STEALTH = function(self)
-                        if UnitAffectingCombat("player") or GetPower("player") ~= 0 then
-                            self:Show()
-                        else
-                            self:Hide()
-                        end
-                    end
-                    self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
-                    self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                    self:SetScript("OnUpdate", self.UpdateEclipseEnergy)
-                    self:Show()
-                else
-                    self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                    self.UpdateEnergy = self.__UpdateEnergy
-                    self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
-                    self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                    self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                    self:SetScript("OnUpdate", nil)
-                    self:Hide()
-                end
+                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                self:SetScript("OnUpdate", nil)
+                -- if GetSpecialization() == 1 and NugEnergyDB.balance then
+                --     self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                --     self.UpdateEnergy = self.UpdateEclipseEnergy
+                --     GetPower = function(unit) return UnitPower(unit, SPELL_POWER_ECLIPSE ) end
+                --     GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_ECLIPSE ) end
+                --     self:UNIT_MAXPOWER()
+                --     self.UPDATE_STEALTH = function(self)
+                --         if UnitAffectingCombat("player") or GetPower("player") ~= 0 then
+                --             self:Show()
+                --         else
+                --             self:Hide()
+                --         end
+                --     end
+                --     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                --     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                --     self:SetScript("OnUpdate", self.UpdateEclipseEnergy)
+                --     self:Show()
+                -- else
+                --     self.UPDATE_STEALTH = self.__UPDATE_STEALTH
+                --     self.UpdateEnergy = self.__UpdateEnergy
+                --     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
+                --     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
+                --     self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                --     self:SetScript("OnUpdate", nil)
+                --     self:Hide()
+                -- end
             end
         end
         self:UNIT_DISPLAYPOWER()
+    elseif class == "DEMONHUNTER" and NugEnergyDB.fury then
+        self.UNIT_POWER_FREQUENT = self.UNIT_POWER
+
+        self:RegisterEvent("UNIT_DISPLAYPOWER")
+        self.UNIT_DISPLAYPOWER = function(self)
+            GetPower = UnitPower --GetPowerBy5
+            self:RegisterEvent("UNIT_POWER_FREQUENT")
+            local newPowerType = select(2,UnitPowerType("player"))
+            if newPowerType == "FURY" then
+                PowerFilter = "FURY"
+            else
+                PowerFilter = "PAIN"
+            end
+        end
+        self:UNIT_DISPLAYPOWER()
+
     elseif class == "MONK" and NugEnergyDB.monk then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -353,13 +419,31 @@ function NugEnergy.Initialize(self)
             local p = UnitPower(unit)
             return p, math_modf(p/5)*5
         end
+    elseif class == "SHAMAN" and NugEnergyDB.maelstrom then
+        PowerFilter = "MAELSTROM"
+        GetPower = UnitPower
+
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            local spec = GetSpecialization()
+            if spec == 1 or spec == 2 then
+                self:RegisterEvent("UNIT_MAXPOWER")
+                self:RegisterEvent("UNIT_POWER_FREQUENT");
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            else
+                self:UnregisterEvent("UNIT_MAXPOWER")
+                self:UnregisterEvent("UNIT_POWER_FREQUENT");
+                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+            end
+        end
+        self:SPELLS_CHANGED()
     else
         self:UnregisterAllEvents()
         self:SetScript("OnUpdate", nil)
         self:Hide()
         return false
     end
-    
+
     self:UPDATE_STEALTH()
     self:UNIT_POWER(nil, "player", PowerFilter)
     return true
@@ -370,6 +454,7 @@ end
 function NugEnergy.UNIT_POWER(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
+NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER
 function NugEnergy.UpdateEnergy(self)
     local p, p2, execute, shine, capped, insufficient = GetPower("player")
     p2 = p2 or p
@@ -486,7 +571,7 @@ function NugEnergy.Create(self)
     end
     f:SetWidth(width)
     f:SetHeight(height)
-    
+
     if not onlyText then
     local backdrop = {
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 0,
@@ -496,7 +581,7 @@ function NugEnergy.Create(self)
     f:SetBackdropColor(0,0,0,0.5)
     f:SetStatusBarTexture(tex)
     f:SetStatusBarColor(unpack(color))
-    
+
     local bg = f:CreateTexture(nil,"BACKGROUND")
     bg:SetTexture(tex)
     bg:SetVertexColor(color[1]/2,color[3]/2,color[3]/2)
@@ -522,7 +607,7 @@ function NugEnergy.Create(self)
     -- a1:SetChange(0.1)
     -- a1:SetDuration(0.2)
     -- a1:SetOrder(1)
-    
+
     local at = f:CreateTexture(nil,"BACKGROUND", nil, -1)
     at:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
     at:SetVertexColor(unpack(color))
@@ -535,11 +620,12 @@ function NugEnergy.Create(self)
     at:SetHeight(height*vmul)
     at:SetPoint("CENTER",self,"CENTER",0,0)
     at:SetAlpha(0)
-    
+
     local sag = at:CreateAnimationGroup()
     sag:SetLooping("BOUNCE")
     local sa1 = sag:CreateAnimation("Alpha")
-    sa1:SetChange(1)
+    sa1:SetFromAlpha(0)
+    sa1:SetToAlpha(1)
     sa1:SetDuration(0.3)
     sa1:SetOrder(1)
     -- local sa2 = sag:CreateAnimation("Alpha")
@@ -547,7 +633,7 @@ function NugEnergy.Create(self)
     -- sa2:SetDuration(0.5)
     -- sa2:SetSmoothing("OUT")
     -- sa2:SetOrder(2)
-    -- 
+    --
     -- f.shine = sag
 
     self.glow = sag
@@ -565,35 +651,35 @@ function NugEnergy.Create(self)
 --~     local icon = f2:CreateTexture(nil,"BACKGROUND")
 --~     icon:SetTexCoord(.07, .93, .07, .93)
 --~     icon:SetAllPoints(f2)
---~     
+--~
 --~     --local sht = f2:CreateTexture(nil,"OVERLAY")
 --~     --sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
 --~     --sht:SetAlpha(0.3)
 --~     --sht:SetAllPoints(f)
 
 --~     f2:SetPoint("RIGHT",f,"LEFT",-2,0)
---~     
---~     local ag = f2:CreateAnimationGroup()    
+--~
+--~     local ag = f2:CreateAnimationGroup()
 --~     local a1 = ag:CreateAnimation("Alpha")
 --~     a1:SetChange(1)
 --~     a1:SetDuration(0.3)
 --~     a1:SetOrder(1)
---~     
+--~
 --~     local a2 = ag:CreateAnimation("Alpha")
 --~     a2:SetChange(-1)
 --~     a2:SetDuration(0.7)
 --~     a2:SetOrder(2)
---~     
+--~
 --~     f.icon = icon
 --~     f.ag = ag
---~     
+--~
 --~     f.PlaySpell = function(self,spellID)
 --~         self.icon:SetTexture(select(3,GetSpellInfo(spellID)))
 --~         self.ag:Play()
---~     end    
-    
+--~     end
+
     end -- endif not onlyText
-    
+
     local text = f:CreateFontString(nil, "OVERLAY")
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
     if vertical then
@@ -608,9 +694,9 @@ function NugEnergy.Create(self)
     end
     text:SetTextColor(unpack(textcolor))
     f.text = text
-    
+
     f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
-    
+
     f:EnableMouse(false)
     f:RegisterForDrag("LeftButton")
     f:SetMovable(true)
@@ -634,7 +720,7 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen lock|r
       |cff00ff00/nen unlock|r
       |cff00ff00/nen reset|r
-      |cff00ff00/nen rage|r 
+      |cff00ff00/nen rage|r
       |cff00ff00/nen focus|r
       |cff00ff00/nen monk|r
       |cff00ff00/nen runic|r
@@ -729,13 +815,13 @@ function NugEnergy.CreateMark(self, at)
         m:SetHeight(self:GetHeight())
         m:SetFrameLevel(4)
         m:SetAlpha(0.6)
-        
+
         local texture = m:CreateTexture(nil, "OVERLAY")
 		texture:SetTexture("Interface\\AddOns\\NugEnergy\\mark")
         texture:SetVertexColor(1,1,1,0.3)
         texture:SetAllPoints(m)
         m.texture = texture
-        
+
         local spark = m:CreateTexture(nil, "OVERLAY")
 		spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
         spark:SetAlpha(0)
@@ -744,7 +830,7 @@ function NugEnergy.CreateMark(self, at)
         spark:SetPoint("CENTER",m)
 		spark:SetBlendMode('ADD')
         m.spark = spark
-        
+
         local ag = spark:CreateAnimationGroup()
         local a1 = ag:CreateAnimation("Alpha")
         a1:SetChange(1)
@@ -754,13 +840,13 @@ function NugEnergy.CreateMark(self, at)
         a2:SetChange(-1)
         a2:SetDuration(0.4)
         a2:SetOrder(2)
-        
+
         m.shine = ag
         m.position = at
         m.Update = UpdateMark
         m:Update()
         m:Show()
-    
+
         self.marks[at] = m
 
         return m
