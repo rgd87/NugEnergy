@@ -406,35 +406,35 @@ function NugEnergy.UpdateEnergy(self)
 end
 NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 
-local idleSince = nil
-function NugEnergy.UpdateEclipseEnergy(self)
-    local p = UnitPower( "player", SPELL_POWER_ECLIPSE )
-    local mp = UnitPowerMax( "player", SPELL_POWER_ECLIPSE )
-    local absp = math.abs(p)
-    self.text:SetText(absp)
-    if not onlyText then
-        if p <= 0 then
-            self:SetStatusBarColor(unpack(lunar))
-            self.bg:SetVertexColor(lunar[1]*.5,lunar[2]*.5,lunar[3]*.5)
-        else
-            self:SetStatusBarColor(unpack(solar))
-            self.bg:SetVertexColor(solar[1]*.5,solar[2]*.5,solar[3]*.5)
-        end
-        self:SetValue(absp)
-    end
-    if p == 0 and not UnitAffectingCombat("player") then
-        if not idleSince then
-            idleSince = GetTime()
-        else
-            if idleSince < GetTime()-3 then
-                self:Hide()
-                idleSince = nil
-            end
-        end
-    else
-        idleSince = nil
-    end
-end
+-- local idleSince = nil
+-- function NugEnergy.UpdateEclipseEnergy(self)
+--     local p = UnitPower( "player", SPELL_POWER_ECLIPSE )
+--     local mp = UnitPowerMax( "player", SPELL_POWER_ECLIPSE )
+--     local absp = math.abs(p)
+--     self.text:SetText(absp)
+--     if not onlyText then
+--         if p <= 0 then
+--             self:SetStatusBarColor(unpack(lunar))
+--             self.bg:SetVertexColor(lunar[1]*.5,lunar[2]*.5,lunar[3]*.5)
+--         else
+--             self:SetStatusBarColor(unpack(solar))
+--             self.bg:SetVertexColor(solar[1]*.5,solar[2]*.5,solar[3]*.5)
+--         end
+--         self:SetValue(absp)
+--     end
+--     if p == 0 and not UnitAffectingCombat("player") then
+--         if not idleSince then
+--             idleSince = GetTime()
+--         else
+--             if idleSince < GetTime()-3 then
+--                 self:Hide()
+--                 idleSince = nil
+--             end
+--         end
+--     else
+--         idleSince = nil
+--     end
+-- end
 
 
 

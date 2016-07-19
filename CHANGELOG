@@ -1,0 +1,30 @@
+7.0.0:
+ - Legion Update: added Insanity, Fury, Maelstrom, Lunar Power; removed 
+Demonic Fury, Eclipse Energy
+ - Spending feedback effect
+
+6.0.1:
+New color state for BrM monks and Protection warriors to indicate 
+insufficient energy (<40) or rage (<60)
+
+6.0.0:
+WoD Update
+Added Balance energy
+
+4.3.5:
+Second level of glow for rage
+Forgotten monk toggle command added
+4.3:
+glow when near max rage
+untested monk support
+bugfix for druid energy text
+4.2.4: Bugfix, outline option
+4.2.3: Warlock bugfix + shards and embers support for the sake of 
+completeness
+4.2.2a: fixed a bug with druids
+4.2.2:
+Showing during meta
+4.2.1a:
+monstrous bugfixes
+4.2.0:
+Updated for 5.0
