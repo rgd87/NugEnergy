@@ -244,7 +244,7 @@ function NugEnergy.Initialize(self)
 
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self.UNIT_DISPLAYPOWER = function(self)
-            GetPower = UnitPower --GetPowerBy5
+            GetPower = RageBarGetPower(30, 10)
             self:RegisterEvent("UNIT_POWER_FREQUENT")
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "FURY" then
@@ -283,6 +283,7 @@ function NugEnergy.Initialize(self)
             self:UPDATE_STEALTH()
         end
         self:UNIT_DISPLAYPOWER()
+
     elseif class == "WARLOCK" and NugEnergyDB.shards then
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
