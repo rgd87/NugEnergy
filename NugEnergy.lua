@@ -147,16 +147,17 @@ function NugEnergy.Initialize(self)
 
 
     elseif class == "PRIEST" and NugEnergyDB.insanity then
-        PowerFilter = "INSANITY"
         local voidform = false
+        local voidformCost = 100
         local InsanityBarGetPower = function(unit)
             local p = UnitPower(unit)
-            local pmax = UnitPowerMax(unit)
-            local shine = p == pmax
+            -- local pmax = UnitPowerMax(unit)
+            local shine = p >= voidformCost
+            if voidform then shine = nil end
             -- local state
             -- if p >= pmax-10 then state = "CAPPED" end
             -- if GetSpecialization() == 3  p < 60 pmax-10
-            local capped = p == pmax
+            local capped = shine
             return p, nil, voidform, shine, capped
         end
         self.UNIT_AURA = function(self, event, unit)
@@ -166,18 +167,25 @@ function NugEnergy.Initialize(self)
         end
         GetPower = InsanityBarGetPower
 
+        self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             if GetSpecialization() == 3 then
+                PowerFilter = "INSANITY"
+                voidformCost = IsPlayerSpell(193225) and 70 or 100 -- Legacy of the Void
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterEvent("UNIT_AURA");
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                self:RegisterEvent("PLAYER_REGEN_ENABLED")
             else
+                PowerFilter = nil
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("UNIT_POWER_FREQUENT");
                 self:UnregisterEvent("UNIT_AURA");
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                -- self:SetScript("OnUpdate", nil)
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                self:Hide()
+                self:SetScript("OnUpdate", nil)
             end
         end
         self:SPELLS_CHANGED()
@@ -497,7 +505,7 @@ function NugEnergy.Create(self)
     f:SetStatusBarTexture(tex)
     f:SetStatusBarColor(unpack(color))
 
-   
+
 
     local spentBar = f:CreateTexture(nil, "ARTWORK", 5)
     spentBar:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
