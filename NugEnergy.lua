@@ -15,6 +15,7 @@ local textoutline = false
 local vertical = false
 local spenderFeedback = true
 local spenderColor = {1,.6,.6}
+local outOfCombatAlpha = false
 
 if vertical then
     fontSize = 15
@@ -335,7 +336,11 @@ function NugEnergy.Initialize(self)
             execute = UnitHealth(unit)/uhm < 0.2
             self:UpdateEnergy()
         end
-        self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
+        self.PLAYER_TARGET_CHANGED = function(self,event)
+            if UnitExists('target') then
+                self.UNIT_HEALTH(self,event,"target")
+            end
+        end
         self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
 
     elseif class == "HUNTER" and NugEnergyDB.focus then
@@ -459,7 +464,10 @@ function NugEnergy.UPDATE_STEALTH(self)
     if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
+        self:SetAlpha(1)
         self:Show()
+    elseif outOfCombatAlpha and PowerFilter then
+        self:SetAlpha(outOfCombatAlpha)
     else
         self:Hide()
     end
