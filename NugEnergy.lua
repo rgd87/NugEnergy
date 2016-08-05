@@ -125,7 +125,7 @@ function NugEnergy.Initialize(self)
         self.initialized = true
     end
 
-    local RageBarGetPower = function(shineZone, cappedZone)
+    local RageBarGetPower = function(shineZone, cappedZone, minLimit)
         return function(unit)
             local p = UnitPower(unit)
             local pmax = UnitPowerMax(unit)
@@ -134,7 +134,7 @@ function NugEnergy.Initialize(self)
             -- if p >= pmax-10 then state = "CAPPED" end
             -- if GetSpecialization() == 3  p < 60 pmax-10
             local capped = p >= pmax-cappedZone
-            return p, nil, execute, shine, capped
+            return p, nil, execute, shine, capped, (minLimit and p < minLimit)
         end
     end
 
@@ -216,7 +216,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                GetPower = RageBarGetPower(30, 10)
+                GetPower = RageBarGetPower(30, 10, 45)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
