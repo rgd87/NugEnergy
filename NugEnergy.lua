@@ -193,6 +193,7 @@ function NugEnergy.Initialize(self)
     elseif class == "DRUID" then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:RegisterEvent("UPDATE_STEALTH")
+
         self:SetScript("OnUpdate",self.UpdateEnergy)
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
@@ -240,6 +241,14 @@ function NugEnergy.Initialize(self)
             end
         end
         self:UNIT_DISPLAYPOWER()
+
+        self.SPELLS_CHANGED = self.UNIT_DISPLAYPOWER
+        self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.PLAYER_ENTERING_WORLD = function(self)
+            C_Timer.After(2, function() self:UNIT_DISPLAYPOWER() end)
+        end
+
     elseif class == "DEMONHUNTER" and NugEnergyDB.fury then
         self.UNIT_POWER_FREQUENT = self.UNIT_POWER
 
@@ -270,7 +279,7 @@ function NugEnergy.Initialize(self)
                     -- local shine = p >= pmax-30
                     local capped = p == pmax
                     local insufficient
-                    -- if p < 40 and GetSpecialization() == 1 then insufficient = true end
+                    if p < 50 and GetSpecialization() == 3 then insufficient = true end
                     return p, p2, execute, shine, capped, insufficient
                 end
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
