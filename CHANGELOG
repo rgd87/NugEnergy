@@ -1,3 +1,7 @@
+7.0.3:
+ - Bugfix for druids
+ - Disabled Execute phase color for Protection Warrior
+
 7.0.2:
  - Warrior execute bugfix
  - outOFCombatAlpha option

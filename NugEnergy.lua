@@ -234,10 +234,12 @@ function NugEnergy.Initialize(self)
                 self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
             else
+                PowerFilter = nil
                 self:UnregisterEvent("UNIT_POWER")
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
+                self:UPDATE_STEALTH()
             end
         end
         self:UNIT_DISPLAYPOWER()
@@ -335,14 +337,14 @@ function NugEnergy.Initialize(self)
             local insufficient
             -- local state
             -- if p >= pmax-10 then state = "CAPPED" end
-            if p < 60 and GetSpecialization() == 3 and GetShapeshiftForm() == 2 then insufficient = true end
+            if p < 20 and GetSpecialization() == 3 then insufficient = true end
             return p, nil, execute, shine, capped, insufficient
         end
         self.UNIT_HEALTH = function(self, event, unit)
             if unit ~= "target" then return end
             local uhm = UnitHealthMax(unit)
             if uhm == 0 then uhm = 1 end
-            execute = UnitHealth(unit)/uhm < 0.2
+            execute = GetSpecialization() ~= 3 and UnitHealth(unit)/uhm < 0.2
             self:UpdateEnergy()
         end
         self.PLAYER_TARGET_CHANGED = function(self,event)
