@@ -730,6 +730,8 @@ function NugEnergy.Create(self)
 
     f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
 
+    f:Hide()
+
     f:EnableMouse(false)
     f:RegisterForDrag("LeftButton")
     f:SetMovable(true)
