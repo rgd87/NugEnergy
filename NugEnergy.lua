@@ -16,6 +16,8 @@ local vertical = false
 local spenderFeedback = true
 local spenderColor = {1,.6,.6}
 local outOfCombatAlpha = false
+local doFadeOut = true
+local fadeAfter = 3
 
 if vertical then
     fontSize = 15
@@ -125,7 +127,7 @@ function NugEnergy.Initialize(self)
         self.initialized = true
     end
 
-    local RageBarGetPower = function(shineZone, cappedZone, minLimit)
+    local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
         return function(unit)
             local p = UnitPower(unit)
             local pmax = UnitPowerMax(unit)
@@ -134,7 +136,8 @@ function NugEnergy.Initialize(self)
             -- if p >= pmax-10 then state = "CAPPED" end
             -- if GetSpecialization() == 3  p < 60 pmax-10
             local capped = p >= pmax-cappedZone
-            return p, nil, execute, shine, capped, (minLimit and p < minLimit)
+            local p2 = throttleText and math_modf(p/5)*5
+            return p, p2, execute, shine, capped, (minLimit and p < minLimit)
         end
     end
 
@@ -275,15 +278,21 @@ function NugEnergy.Initialize(self)
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
                 -- GetPower = GetPowerBy5
-                GetPower = function(unit)
-                    local p, p2 = GetPowerBy5(unit)
-                    local pmax = UnitPowerMax(unit)
-                    -- local shine = p >= pmax-30
-                    local capped = p == pmax
-                    local insufficient
-                    if p < 50 and GetSpecialization() == 3 then insufficient = true end
-                    return p, p2, execute, shine, capped, insufficient
+                -- GetPower = function(unit)
+                --     local p, p2 = GetPowerBy5(unit)
+                --     local pmax = UnitPowerMax(unit)
+                --     -- local shine = p >= pmax-30
+                --     local capped = p == pmax
+                --     local insufficient
+                --     if p < 50 and GetSpecialization() == 3 then insufficient = true end
+                --     return p, p2, execute, shine, capped, insufficient
+                -- end
+                if GetSpecialization() == 3 then
+                    GetPower = RageBarGetPower(-1, 5, 50, true)
+                else
+                    GetPower = RageBarGetPower(10, 5, 25, true)
                 end
+
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
             else
@@ -471,12 +480,40 @@ function NugEnergy.UNIT_MAXPOWER(self)
         mark:Update()
     end
 end
+
+local fadeTime = 1
+local fader = CreateFrame("Frame", nil, NugEnergy)
+NugEnergy.fader = fader
+local HideTimer = function(self, time)
+    self.OnUpdateCounter = (self.OnUpdateCounter or 0) + time
+    if self.OnUpdateCounter < fadeAfter then return end
+
+    local nen = self:GetParent()
+    local a = fadeTime - ((self.OnUpdateCounter - fadeAfter) / fadeTime)
+    nen:SetAlpha(a)
+    if self.OnUpdateCounter >= fadeAfter + fadeTime then
+        self:SetScript("OnUpdate",nil)
+        nen:Hide()
+        nen.hiding = false
+        self.OnUpdateCounter = 0
+    end
+end
+function NugEnergy:StartHiding()
+    if (not self.hiding and self:IsVisible())  then
+        fader:SetScript("OnUpdate", HideTimer)
+        fader.OnUpdateCounter = 0
+        self.hiding = true
+    end
+end
+
 function NugEnergy.UPDATE_STEALTH(self)
     if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:SetAlpha(1)
         self:Show()
+    elseif doFadeOut and PowerFilter then
+        self:StartHiding()
     elseif outOfCombatAlpha and PowerFilter then
         self:SetAlpha(outOfCombatAlpha)
     else
