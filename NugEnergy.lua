@@ -869,8 +869,8 @@ NugEnergy.Commands = {
         NugEnergyDB.rage = not NugEnergyDB.rage
         NugEnergy:Initialize()
     end,
-    ["monk"] = function(v)
-        NugEnergyDB.monk = not NugEnergyDB.monk
+    ["energy"] = function(v)
+        NugEnergyDB.energy = not NugEnergyDB.energy
         NugEnergy:Initialize()
     end,
     ["focus"] = function(v)
@@ -1237,63 +1237,63 @@ function NugEnergy:CreateGUI()
                                 type = "toggle",
                                 order = 1,
                                 get = function(info) return NugEnergyDB.energy end,
-                                set = function(info, v) NugEnergyDB.energy = v end
+                                set = function(info, v) NugEnergy.Commands.energy() end
                             },
                             rage = {
                                 name = "Rage",
                                 type = "toggle",
                                 order = 2,
                                 get = function(info) return NugEnergyDB.rage end,
-                                set = function(info, v) NugEnergyDB.rage = v end
+                                set = function(info, v) NugEnergy.Commands.rage() end
                             },
                             focus = {
                                 name = "Focus",
                                 type = "toggle",
                                 order = 3,
                                 get = function(info) return NugEnergyDB.focus end,
-                                set = function(info, v) NugEnergyDB.focus = v end
+                                set = function(info, v) NugEnergy.Commands.focus() end
                             },
                             fury = {
                                 name = "Fury & Vengeance",
                                 type = "toggle",
                                 order = 4,
                                 get = function(info) return NugEnergyDB.fury end,
-                                set = function(info, v) NugEnergyDB.fury = v end
+                                set = function(info, v) NugEnergy.Commands.fury() end
                             },
                             runic = {
                                 name = "Runic Power",
                                 type = "toggle",
                                 order = 5,
                                 get = function(info) return NugEnergyDB.runic end,
-                                set = function(info, v) NugEnergyDB.runic = v end
+                                set = function(info, v) NugEnergy.Commands.runic() end
                             },
                             shards = {
                                 name = "Shards",
                                 type = "toggle",
                                 order = 6,
                                 get = function(info) return NugEnergyDB.shards end,
-                                set = function(info, v) NugEnergyDB.shards = v end
+                                set = function(info, v) NugEnergy.Commands.shards() end
                             },
                             insanity = {
                                 name = "Insanity",
                                 type = "toggle",
                                 order = 7,
                                 get = function(info) return NugEnergyDB.insanity end,
-                                set = function(info, v) NugEnergyDB.insanity = v end
+                                set = function(info, v) NugEnergy.Commands.insanity() end
                             },
                             balance = {
                                 name = "Balance",
                                 type = "toggle",
                                 order = 8,
                                 get = function(info) return NugEnergyDB.balance end,
-                                set = function(info, v) NugEnergyDB.balance = v end
+                                set = function(info, v) NugEnergy.Commands.balance() end
                             },
                             maelstrom = {
                                 name = "Maelstrom",
                                 type = "toggle",
                                 order = 9,
                                 get = function(info) return NugEnergyDB.maelstrom end,
-                                set = function(info, v) NugEnergyDB.maelstrom = v end
+                                set = function(info, v) NugEnergy.Commands.maelstrom() end
                             },
 
                         },
