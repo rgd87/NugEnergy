@@ -331,8 +331,14 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
-            GetPower = function(unit) return UnitPower(unit, SPELL_POWER_SOUL_SHARDS) end
-            GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_SOUL_SHARDS) end
+            -- GetPower = function(unit) return UnitPower(unit, SPELL_POWER_SOUL_SHARDS) end
+            GetPower = function(unit)
+                local p = UnitPower(unit, SPELL_POWER_SOUL_SHARDS, true)
+                local pmax = UnitPowerMax(unit, SPELL_POWER_SOUL_SHARDS, true)
+                -- p, p2, execute, shine, capped, insufficient
+                return p, math_modf(p/10), nil, nil, p == pmax, nil
+            end
+            GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_SOUL_SHARDS, true) end
             PowerFilter = "SOUL_SHARDS"
         end
         self:SPELLS_CHANGED()
