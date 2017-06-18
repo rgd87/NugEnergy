@@ -56,6 +56,9 @@ local defaults = {
     insanity = true,
     maelstrom = true,
 
+    -- powerTypeColors = true,
+    -- focusColor = true
+
     width = 100,
     height = 30,
     normalColor = { 0.9, 0.1, 0.1 }, --1
@@ -542,11 +545,19 @@ function NugEnergy:StartHiding()
     end
 end
 
+function NugEnergy:StopHiding()
+    -- if self.hiding then
+        fader:SetScript("OnUpdate", nil)
+        self.hiding = false
+    -- end
+end
+
 function NugEnergy.UPDATE_STEALTH(self)
     if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:SetAlpha(1)
+        self:StopHiding()
         self:Show()
     elseif doFadeOut and PowerFilter then
         self:StartHiding()
