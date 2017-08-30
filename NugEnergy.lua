@@ -23,7 +23,7 @@ end)
 local LSM = LibStub("LibSharedMedia-3.0")
 
 LSM:Register("statusbar", "Glamour7", [[Interface\AddOns\NugEnergy\statusbar.tga]])
-LSM:Register("font", "Emblem", [[Interface\AddOns\NugEnergy\Emblem.ttf]])
+LSM:Register("font", "Emblem", [[Interface\AddOns\NugEnergy\Emblem.ttf]], 15)
 
 local getStatusbar = function() return LSM:Fetch("statusbar", NugEnergyDB.textureName) end
 local getFont = function() return LSM:Fetch("font", NugEnergyDB.fontName) end

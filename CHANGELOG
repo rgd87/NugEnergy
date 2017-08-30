@@ -1,3 +1,7 @@
+### 7.3.3:
+
+- Default Emblem font now registered in SharedMedia even in non-western localizations
+
 ### 7.3.2:
 
 - Updated Ace libs for 7.3
