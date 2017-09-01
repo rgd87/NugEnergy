@@ -1,3 +1,8 @@
+### 7.3.4:
+
+- Out of combat alpha added to GUI options and now works with fading.
+- Voidform cost now 65 with Legacy of the Void talent 
+
 ### 7.3.3:
 
 - Default Emblem font now registered in SharedMedia even in non-western localizations

@@ -1,7 +1,6 @@
 local textoutline = false
 local vertical = false
 local spenderFeedback = true
--- local outOfCombatAlpha = false
 local doFadeOut = true
 local fadeAfter = 3
 local onlyText = false
@@ -200,7 +199,7 @@ function NugEnergy.Initialize(self)
         self.SPELLS_CHANGED = function(self)
             if GetSpecialization() == 3 then
                 PowerFilter = "INSANITY"
-                voidformCost = IsPlayerSpell(193225) and 70 or 100 -- Legacy of the Void
+                voidformCost = IsPlayerSpell(193225) and 65 or 100 -- Legacy of the Void
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterEvent("UNIT_AURA");
@@ -528,11 +527,15 @@ local HideTimer = function(self, time)
     -- if p < 0 then p = 0 end
     -- local ooca = NugEnergyDB.outOfCombatAlpha 
     -- local a = ooca + ((1 - ooca) * p)
-    local a = p
+    local pA = NugEnergyDB.outOfCombatAlpha
+    local rA = 1 - NugEnergyDB.outOfCombatAlpha
+    local a = pA + (p*rA)
     nen:SetAlpha(a)
     if self.OnUpdateCounter >= fadeAfter + fadeTime then
         self:SetScript("OnUpdate",nil)
-        nen:Hide()
+        if nen:GetAlpha() <= 0.03 then
+            nen:Hide()
+        end
         nen.hiding = false
         self.OnUpdateCounter = 0
     end
@@ -1147,6 +1150,26 @@ function NugEnergy:CreateGUI()
                                 set = function(info, r, g, b, a)
                                     NugEnergyDB.textColor = {r,g,b, a}
                                 end,
+                            },
+                        },
+                    },
+                    fadeGroup = {
+                        type = "group",
+                        name = "",
+                        order = 1.5,
+                        args = {
+                            font = {
+                                name = "Out of Combat Alpha",
+                                desc = "0 = disabled",
+                                type = "range",
+                                get = function(info) return NugEnergyDB.outOfCombatAlpha end,
+                                set = function(info, v)
+                                    NugEnergyDB.outOfCombatAlpha = tonumber(v)
+                                end,
+                                min = 0,
+                                max = 0.8,
+                                step = 0.05,
+                                order = 1,
                             },
                         },
                     },
