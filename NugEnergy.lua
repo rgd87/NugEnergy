@@ -5,7 +5,7 @@ local doFadeOut = true
 local fadeAfter = 3
 local onlyText = false
 local shouldBeFull = false
-local isFull = false
+local isFull = true
 
 if vertical then
     fontSize = 15
