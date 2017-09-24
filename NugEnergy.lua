@@ -4,6 +4,8 @@ local spenderFeedback = true
 local doFadeOut = true
 local fadeAfter = 3
 local onlyText = false
+local shouldBeFull = false
+local isFull = false
 
 if vertical then
     fontSize = 15
@@ -168,6 +170,7 @@ function NugEnergy.Initialize(self)
     local class = select(2,UnitClass("player"))
     if class == "ROGUE" and NugEnergyDB.energy then
         PowerFilter = "ENERGY"
+        shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
         GetPower = GetPowerBy5
@@ -224,8 +227,10 @@ function NugEnergy.Initialize(self)
         self:SetScript("OnUpdate",self.UpdateEnergy)
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
+            shouldBeFull = false
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
+                shouldBeFull = true
                 self:RegisterEvent("UNIT_POWER")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
@@ -301,6 +306,7 @@ function NugEnergy.Initialize(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
+                shouldBeFull = true
                 -- GetPower = GetPowerBy5
                 -- GetPower = function(unit)
                 --     local p, p2 = GetPowerBy5(unit)
@@ -395,6 +401,7 @@ function NugEnergy.Initialize(self)
 
     elseif class == "HUNTER" and NugEnergyDB.focus then
         PowerFilter = "FOCUS"
+        shouldBeFull = true
         self:SetScript("OnUpdate",self.UpdateEnergy)
         GetPower = GetPowerBy5
 
@@ -436,6 +443,12 @@ end
 NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER
 function NugEnergy.UpdateEnergy(self)
     local p, p2, execute, shine, capped, insufficient = GetPower("player")
+    local wasFull = isFull
+    isFull = p == GetPowerMax("player")
+    if isFull ~= wasFull then
+        NugEnergy:UPDATE_STEALTH(nil, true)
+    end
+
     p2 = p2 or p
     self.text:SetText(p2)
     if not onlyText then
@@ -555,8 +568,8 @@ function NugEnergy:StopHiding()
     -- end
 end
 
-function NugEnergy.UPDATE_STEALTH(self)
-    if (IsStealthed() or UnitAffectingCombat("player") or ForcedToShow) and PowerFilter then
+function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
+    if (UnitAffectingCombat("player") or (shouldBeFull and not isFull) or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:SetAlpha(1)

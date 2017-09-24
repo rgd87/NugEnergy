@@ -1,3 +1,7 @@
+### 7.3.5:
+- No longer always visible in stealth
+- For energy classes remains visible until energy becomes full even out of combat
+
 ### 7.3.4:
 
 - Out of combat alpha added to GUI options and now works with fading.
