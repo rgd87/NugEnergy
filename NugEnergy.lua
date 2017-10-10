@@ -261,7 +261,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                GetPower = UnitPower
+                GetPower = RageBarGetPower(30, 10, 40)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
@@ -463,21 +463,25 @@ function NugEnergy.UpdateEnergy(self)
             local c = NugEnergyDB.maxColor
             self:SetStatusBarColor(unpack(c))
             self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
+            -- self.spentBar:SetColor(unpack(c))
             self.glowanim:SetDuration(0.15)
         elseif execute then
             local c = NugEnergyDB.altColor
             self:SetStatusBarColor(unpack(c))
             self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
+            -- self.spentBar:SetColor(unpack(c))
             self.glowanim:SetDuration(0.3)
         elseif insufficient then
             local c = NugEnergyDB.lowColor
             self:SetStatusBarColor(unpack(c))
+            -- self.spentBar:SetColor(unpack(c))
             self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
             self.glowanim:SetDuration(0.3)
         else
             local c = NugEnergyDB.normalColor
             self:SetStatusBarColor(unpack(c))
             self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
+            -- self.spentBar:SetColor(unpack(c))
             self.glowanim:SetDuration(0.3)
         end
         self:SetValue(p)
@@ -569,7 +573,7 @@ function NugEnergy:StopHiding()
 end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
-    if (UnitAffectingCombat("player") or (shouldBeFull and not isFull) or ForcedToShow) and PowerFilter then
+    if (UnitAffectingCombat("player") or (IsStealthed() and shouldBeFull and not isFull) or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:SetAlpha(1)
@@ -662,16 +666,26 @@ function NugEnergy.Create(self)
     f:SetBackdropColor(0,0,0,0.5)
     local tex = getStatusbar()
     f:SetStatusBarTexture(tex)
+    -- f:GetStatusBarTexture():SetDrawLayer("ARTWORK", 3)
     local color = NugEnergyDB.normalColor
     f:SetStatusBarColor(unpack(color))
 
 
 
-    local spentBar = f:CreateTexture(nil, "ARTWORK", 5)
+    local spentBar = f:CreateTexture(nil, "ARTWORK", 7)
     spentBar:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
+    -- spentBar:SetTexture([[Interface\TargetingFrame\UI-StatusBar]])
     spentBar:SetVertexColor(unpack(NugEnergyDB.spenderColor))
     spentBar:SetHeight(height*1)
     spentBar:SetWidth(width)
+
+    spentBar.SetColor = function(self, r1,g1,b1)
+        local r = math.min(1, r1 + 0.2)
+        local g = math.min(1, g1 + 0.2)
+        local b = math.min(1, b1 + 0.2)
+        self:SetVertexColor(r,g,b)
+    end
+    -- spentBar:SetBlendMode("ADD")
     spentBar:SetPoint("LEFT", f, "LEFT",0,0)
     spentBar:SetAlpha(0)
     f.spentBar = spentBar
@@ -703,15 +717,22 @@ function NugEnergy.Create(self)
     local trail = spentBar:CreateAnimationGroup()
     local sa1 = trail:CreateAnimation("Alpha")
     sa1:SetFromAlpha(0)
-    sa1:SetToAlpha(0.4)
-    sa1:SetDuration(0.25)
+    sa1:SetToAlpha(0.5)
+    sa1:SetSmoothing("OUT")
+    sa1:SetDuration(0.2)
     sa1:SetOrder(1)
 
     local sa2 = trail:CreateAnimation("Alpha")
-    sa2:SetFromAlpha(0.4)
+    sa2:SetFromAlpha(0.6)
     sa2:SetToAlpha(0)
+    -- sa2:SetSmoothing("IN")
     sa2:SetDuration(0.5)
     sa2:SetOrder(2)
+
+    -- local ta1 = trail:CreateAnimation("Translation")
+    -- ta1:SetOffset(0, -10)
+    -- ta1:SetDuration(0.75)
+    -- ta1:SetOrder(1)
 
     local bg = f:CreateTexture(nil,"BACKGROUND")
     bg:SetTexture(tex)
@@ -1149,6 +1170,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.spenderColor = {r,g,b}
+                                    NugEnergy:Resize()
                                 end,
                             },
                             textColor = {
