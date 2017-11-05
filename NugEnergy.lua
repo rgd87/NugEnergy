@@ -24,7 +24,7 @@ end)
 local LSM = LibStub("LibSharedMedia-3.0")
 
 LSM:Register("statusbar", "Glamour7", [[Interface\AddOns\NugEnergy\statusbar.tga]])
-LSM:Register("font", "Emblem", [[Interface\AddOns\NugEnergy\Emblem.ttf]], 15)
+LSM:Register("font", "Emblem", [[Interface\AddOns\NugEnergy\Emblem.ttf]], GetLocale() ~= "enUS" and 15)
 
 local getStatusbar = function() return LSM:Fetch("statusbar", NugEnergyDB.textureName) end
 local getFont = function() return LSM:Fetch("font", NugEnergyDB.fontName) end
@@ -726,13 +726,20 @@ function NugEnergy.Create(self)
     sa2:SetFromAlpha(0.6)
     sa2:SetToAlpha(0)
     -- sa2:SetSmoothing("IN")
-    sa2:SetDuration(0.5)
+    sa2:SetDuration(0.4)
     sa2:SetOrder(2)
 
     -- local ta1 = trail:CreateAnimation("Translation")
-    -- ta1:SetOffset(0, -10)
-    -- ta1:SetDuration(0.75)
+    -- ta1:SetOffset(0, 8)
+    -- ta1:SetSmoothing("OUT")
+    -- ta1:SetDuration(0.2)
     -- ta1:SetOrder(1)
+
+    -- local ta1 = trail:CreateAnimation("Translation")
+    -- ta1:SetOffset(0, -38)
+    -- ta1:SetSmoothing("IN")
+    -- ta1:SetDuration(0.20)
+    -- ta1:SetOrder(2)
 
     local bg = f:CreateTexture(nil,"BACKGROUND")
     bg:SetTexture(tex)
