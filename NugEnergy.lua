@@ -1,18 +1,10 @@
 local textoutline = false
-local vertical = false
 local spenderFeedback = true
 local doFadeOut = true
 local fadeAfter = 3
 local onlyText = false
 local shouldBeFull = false
 local isFull = true
-
-if vertical then
-    fontSize = 15
-    width = 80
-    tex = [[Interface\AddOns\NugEnergy\vstatusbar.tga]]
-end
-
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -70,12 +62,12 @@ local defaults = {
     textureName = "Glamour7",
     fontName = "Emblem",
     fontSize = 25,
-    textColor = {1,1,1,1},
+    textColor = {1,1,1, 0.3},
     spenderColor = {1,.6,.6},
     outOfCombatAlpha = 0,
 }
 
-local free_marks = {} -- for unused mark frames
+local free_marks = {}
 
 local function SetupDefaults(t, defaults)
     for k,v in pairs(defaults) do
@@ -978,7 +970,7 @@ local helpMessage = {
 }
 
 function NugEnergy.SlashCmd(msg)
-    k,v = string.match(msg, "([%w%+%-%=]+) ?(.*)")
+    local k,v = string.match(msg, "([%w%+%-%=]+) ?(.*)")
     if not k or k == "help" then
         print("Usage:")
         for k,v in ipairs(helpMessage) do
@@ -1191,6 +1183,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b, a)
                                     NugEnergyDB.textColor = {r,g,b, a}
+                                    NugEnergy:ResizeText()
                                 end,
                             },
                         },
