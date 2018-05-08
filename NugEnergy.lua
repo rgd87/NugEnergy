@@ -35,6 +35,18 @@ local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
 
+local IsBFA = GetBuildInfo():match("^8")
+local UnitAura = function(...)
+    local name, _, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod
+    if IsBFA then
+        name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod = UnitAura(...)
+    else
+        name, _, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod = UnitAura(...)
+    end
+    return name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod
+end
+-- local UnitAura = UnitAura
+
 local defaults = {
     point = "CENTER",
     x = 0, y = 0,
@@ -126,6 +138,18 @@ function NugEnergy.PLAYER_LOGOUT(self, event)
 end
 
 
+
+local function FindAura(unit, spellID, filter)
+    for i=1, 100 do
+        -- rank will be removed in bfa
+        local name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, auraSpellID = UnitAura(unit, i, filter)
+        if not name then return nil end
+        if spellID == auraSpellID then
+            return name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, auraSpellID
+        end
+    end
+end
+
 local GetPowerBy5 = function(unit)
     local p = UnitPower(unit)
     local pmax = UnitPowerMax(unit)
@@ -185,7 +209,7 @@ function NugEnergy.Initialize(self)
         end
         self.UNIT_AURA = function(self, event, unit)
             if unit ~= "player" then return end
-            voidform = ( UnitAura("player", GetSpellInfo(194249), nil, "HELPFUL") ~= nil)
+            voidform = ( FindAura("player", 194249, "HELPFUL") ~= nil)
             self:UpdateEnergy()
         end
         GetPower = InsanityBarGetPower
