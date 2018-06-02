@@ -75,7 +75,6 @@ local defaults = {
     fontName = "Emblem",
     fontSize = 25,
     textColor = {1,1,1, 0.3},
-    spenderColor = {1,.6,.6},
     outOfCombatAlpha = 0,
 }
 
@@ -477,26 +476,22 @@ function NugEnergy.UpdateEnergy(self)
         end
         if capped then
             local c = NugEnergyDB.maxColor
-            self:SetStatusBarColor(unpack(c))
-            self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
+            self:SetColor(unpack(c))
             -- self.spentBar:SetColor(unpack(c))
             self.glowanim:SetDuration(0.15)
         elseif execute then
             local c = NugEnergyDB.altColor
-            self:SetStatusBarColor(unpack(c))
-            self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
+            self:SetColor(unpack(c))
             -- self.spentBar:SetColor(unpack(c))
             self.glowanim:SetDuration(0.3)
         elseif insufficient then
             local c = NugEnergyDB.lowColor
-            self:SetStatusBarColor(unpack(c))
+            self:SetColor(unpack(c))
             -- self.spentBar:SetColor(unpack(c))
-            self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
             self.glowanim:SetDuration(0.3)
         else
             local c = NugEnergyDB.normalColor
-            self:SetStatusBarColor(unpack(c))
-            self.bg:SetVertexColor(c[1]*.5,c[2]*.5,c[3]*.5)
+            self:SetColor(unpack(c))
             -- self.spentBar:SetColor(unpack(c))
             self.glowanim:SetDuration(0.3)
         end
@@ -644,7 +639,8 @@ function NugEnergy:Resize()
 
     f.spentBar:SetWidth(width)
     f.spentBar:SetHeight(height*1)
-    f.spentBar:SetVertexColor(unpack(NugEnergyDB.spenderColor))
+    f.spark:SetWidth(height*2)
+    f.spark:SetHeight(height)
 
     local hmul,vmul = 1.5, 1.8
     if vertical then hmul, vmul = vmul, hmul end
@@ -660,6 +656,21 @@ function NugEnergy:ResizeText()
     local r,g,b,a = unpack(NugEnergyDB.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
+end
+
+local SparkSetValue = function(self, v)
+    local min, max = self:GetMinMaxValues()
+    local total = max-min
+    local p
+    if total == 0 then
+        p = 0
+    else
+        p = (v-min)/(max-min)
+        if p > 1 then p = 1 end
+    end
+    local len = p*self:GetWidth()
+    self.spark:SetPoint("CENTER", self, "LEFT", len, 0)
+    return self:NormalSetValue(v)
 end
 
 function NugEnergy.Create(self)
@@ -683,22 +694,33 @@ function NugEnergy.Create(self)
     local tex = getStatusbar()
     f:SetStatusBarTexture(tex)
     -- f:GetStatusBarTexture():SetDrawLayer("ARTWORK", 3)
-    local color = NugEnergyDB.normalColor
-    f:SetStatusBarColor(unpack(color))
 
+    local bg = f:CreateTexture(nil,"BACKGROUND")
+    bg:SetTexture(tex)
+    bg:SetAllPoints(f)
 
+    f.bg = bg
+
+    local spark = f:CreateTexture(nil, "ARTWORK", nil, 4)
+    spark:SetBlendMode("ADD")
+    spark:SetTexture([[Interface\AddOns\NugEnergy\spark.tga]])
+    spark:SetSize(f:GetHeight()*2, f:GetHeight())
+    spark:SetPoint("CENTER", f, "TOP",0,0)
+
+    f.spark = spark
 
     local spentBar = f:CreateTexture(nil, "ARTWORK", 7)
-    spentBar:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
-    -- spentBar:SetTexture([[Interface\TargetingFrame\UI-StatusBar]])
-    spentBar:SetVertexColor(unpack(NugEnergyDB.spenderColor))
+    -- spentBar:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
+    spentBar:SetTexture(tex)
+    -- spentBar:SetVertexColor(unpack(NugEnergyDB.spenderColor))
+    -- spentBar:SetVertexColor(unpack(color))
     spentBar:SetHeight(height*1)
     spentBar:SetWidth(width)
 
     spentBar.SetColor = function(self, r1,g1,b1)
-        local r = math.min(1, r1 + 0.2)
-        local g = math.min(1, g1 + 0.2)
-        local b = math.min(1, b1 + 0.2)
+        local r = math.min(1, r1 + 0.15)
+        local g = math.min(1, g1 + 0.15)
+        local b = math.min(1, b1 + 0.15)
         self:SetVertexColor(r,g,b)
     end
     -- spentBar:SetBlendMode("ADD")
@@ -706,44 +728,70 @@ function NugEnergy.Create(self)
     spentBar:SetAlpha(0)
     f.spentBar = spentBar
 
+    f.SetColor = function(self, r,g,b,a)
+        self:SetStatusBarColor(r,g,b,a)
+        self.bg:SetVertexColor(r*0.3,g*0.3,b*0.3)
+        self.spark:SetVertexColor(r,g,b)
+        -- self.spentBar:SetColor(r,g,b)
+        self.spentBar:SetVertexColor(r,g,b)
+    end
+
+    local color = NugEnergyDB.normalColor
+    f:SetColor(unpack(color))
+
     f._SetValue = f._SetValue or f.SetValue
 
     f.SetValue = function(self, new)
+        local cur = self:GetValue()
+        local min, max = self:GetMinMaxValues()
+        local fwidth = self:GetWidth()
+        local total = max-min
+
         if spenderFeedback then
-            local cur = self:GetValue()
-            local min, max = self:GetMinMaxValues()
             local diff = new - cur
             if diff < 0 and math.abs(diff)/max > 0.1 then
-                local fwidth = self:GetWidth()
-                local lpos = (new/max)*fwidth
-                local len = (-diff/max)*fwidth
+
+                local p1 = new/max
+                local pd = (-diff/max)
+                local lpos = p1*fwidth
+                local len = pd*fwidth
+
                 self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
+                self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
                 self.spentBar:SetWidth(len)
                 if self.trail:IsPlaying() then self.trail:Stop() end
                 self.trail:Play()
                 self.spentBar.currentValue = cur
-            -- else
-                -- if self.trail:IsPlaying() then
             end
         end
-        self:_SetValue(new)
+        
+        -- spark
+        local p = 0
+        if total > 0 then
+            p = (new-min)/(max-min)
+            if p > 1 then p = 1 end
+        end
+        local len = p*fwidth
+        self.spark:SetPoint("CENTER", self, "LEFT", len, 0)
+
+        return self:_SetValue(new)
     end
 
 
     local trail = spentBar:CreateAnimationGroup()
-    local sa1 = trail:CreateAnimation("Alpha")
-    sa1:SetFromAlpha(0)
-    sa1:SetToAlpha(0.5)
-    sa1:SetSmoothing("OUT")
-    sa1:SetDuration(0.2)
-    sa1:SetOrder(1)
+    -- local sa1 = trail:CreateAnimation("Alpha")
+    -- sa1:SetFromAlpha(0)
+    -- sa1:SetToAlpha(1)
+    -- sa1:SetSmoothing("OUT")
+    -- sa1:SetDuration(0.1)
+    -- sa1:SetOrder(1)
 
     local sa2 = trail:CreateAnimation("Alpha")
-    sa2:SetFromAlpha(0.6)
+    sa2:SetFromAlpha(1)
     sa2:SetToAlpha(0)
     -- sa2:SetSmoothing("IN")
-    sa2:SetDuration(0.4)
-    sa2:SetOrder(2)
+    sa2:SetDuration(0.6)
+    sa2:SetOrder(1)
 
     -- local ta1 = trail:CreateAnimation("Translation")
     -- ta1:SetOffset(0, 8)
@@ -757,12 +805,6 @@ function NugEnergy.Create(self)
     -- ta1:SetDuration(0.20)
     -- ta1:SetOrder(2)
 
-    local bg = f:CreateTexture(nil,"BACKGROUND")
-    bg:SetTexture(tex)
-    bg:SetVertexColor(color[1]/2,color[3]/2,color[3]/2)
-    bg:SetAllPoints(f)
-
-    f.bg = bg
     f.trail = trail
     f.marks = {}
     f:UNIT_MAXPOWER()
@@ -1181,19 +1223,6 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.lowColor = {r,g,b}
-                                end,
-                            },
-                            spenderColor = {
-                                name = "Spender effect Color",
-                                type = 'color',
-                                order = 5,
-                                get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.spenderColor)
-                                    return r,g,b
-                                end,
-                                set = function(info, r, g, b)
-                                    NugEnergyDB.spenderColor = {r,g,b}
-                                    NugEnergy:Resize()
                                 end,
                             },
                             textColor = {
