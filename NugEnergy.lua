@@ -156,7 +156,7 @@ local GetPowerBy5 = function(unit)
     return p, math_modf(p/5)*5, nil, nil, p == pmax, nil
 end
 function NugEnergy.Initialize(self)
-    self:RegisterEvent("UNIT_POWER")
+    self:RegisterEvent("UNIT_POWER_UPDATE")
     self:RegisterEvent("UNIT_MAXPOWER")
     self:RegisterEvent("PLAYER_REGEN_ENABLED")
     self:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -246,7 +246,7 @@ function NugEnergy.Initialize(self)
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 shouldBeFull = true
-                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
@@ -258,7 +258,7 @@ function NugEnergy.Initialize(self)
                 self:UPDATE_STEALTH()
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
-                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
@@ -269,7 +269,7 @@ function NugEnergy.Initialize(self)
                 self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
             elseif GetSpecialization() == 1 and NugEnergyDB.balance then
-                self:RegisterEvent("UNIT_POWER")
+                self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 PowerFilter = "LUNAR_POWER"
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
@@ -282,7 +282,7 @@ function NugEnergy.Initialize(self)
                 self:UPDATE_STEALTH()
             else
                 PowerFilter = nil
-                self:UnregisterEvent("UNIT_POWER")
+                self:UnregisterEvent("UNIT_POWER_UPDATE")
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
@@ -299,7 +299,7 @@ function NugEnergy.Initialize(self)
         end
 
     elseif class == "DEMONHUNTER" and NugEnergyDB.fury then
-        self.UNIT_POWER_FREQUENT = self.UNIT_POWER
+        self.UNIT_POWER_FREQUENT = self.UNIT_POWER_UPDATE
 
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self.UNIT_DISPLAYPOWER = function(self)
@@ -446,16 +446,16 @@ function NugEnergy.Initialize(self)
     end
 
     self:UPDATE_STEALTH()
-    self:UNIT_POWER(nil, "player", PowerFilter)
+    self:UNIT_POWER_UPDATE(nil, "player", PowerFilter)
     return true
 end
 
 
 
-function NugEnergy.UNIT_POWER(self,event,unit,powertype)
+function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
-NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER
+NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER_UPDATE
 function NugEnergy.UpdateEnergy(self)
     local p, p2, execute, shine, capped, insufficient = GetPower("player")
     local wasFull = isFull
@@ -769,7 +769,15 @@ function NugEnergy.Create(self)
         local p = 0
         if total > 0 then
             p = (new-min)/(max-min)
-            if p > 1 then p = 1 end
+            if p > 1 then
+                p = 1
+            end
+            -- if p > 0.95 then
+            --     local a = (1-p)*20
+            --     self.spark:SetAlpha(a)
+            -- else
+            --     self.spark:SetAlpha(1)
+            -- end
         end
         local len = p*fwidth
         self.spark:SetPoint("CENTER", self, "LEFT", len, 0)
