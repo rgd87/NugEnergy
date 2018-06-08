@@ -800,12 +800,17 @@ function NugEnergy.Create(self)
             if p > 1 then
                 p = 1
             end
+            if p <= 0.07 then -- hide spark when it's close to left border
+                p = p - 0.2
+                if p < 0 then p = 0 end
+                local a = p*20
+                self.spark:SetAlpha(a)
             -- if p > 0.95 then
             --     local a = (1-p)*20
             --     self.spark:SetAlpha(a)
-            -- else
-            --     self.spark:SetAlpha(1)
-            -- end
+            else
+                self.spark:SetAlpha(1)
+            end
         end
         local len = p*fwidth
         self.spark:SetPoint("CENTER", self, "LEFT", len, 0)
