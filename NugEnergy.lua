@@ -35,6 +35,14 @@ local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
 
+local EPT = Enum.PowerType
+local Enum_PowerType_Insanity = EPT.Insanity
+local Enum_PowerType_Energy = EPT.Energy
+local Enum_PowerType_RunicPower = EPT.RunicPower
+local Enum_PowerType_LunarPower = EPT.LunarPower
+local Enum_PowerType_Focus = EPT.Focus
+
+
 local IsBFA = GetBuildInfo():match("^8")
 local UnitAura = function(...)
     local name, _, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod
@@ -170,8 +178,8 @@ function NugEnergy.Initialize(self)
 
     local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
         return function(unit)
-            local p = UnitPower(unit)
-            local pmax = UnitPowerMax(unit)
+            local p = UnitPower(unit, PowerTypeIndex)
+            local pmax = UnitPowerMax(unit, PowerTypeIndex)
             local shine = p >= pmax-shineZone
             -- local state
             -- if p >= pmax-10 then state = "CAPPED" end
@@ -185,6 +193,7 @@ function NugEnergy.Initialize(self)
     local class = select(2,UnitClass("player"))
     if class == "ROGUE" and NugEnergyDB.energy then
         PowerFilter = "ENERGY"
+        PowerTypeIndex = Enum.PowerType.Energy
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -194,9 +203,9 @@ function NugEnergy.Initialize(self)
 
     elseif class == "PRIEST" and NugEnergyDB.insanity then
         local voidform = false
-        local voidformCost = 100
+        local voidformCost = 90
         local InsanityBarGetPower = function(unit)
-            local p = UnitPower(unit)
+            local p = UnitPower(unit, Enum_PowerType_Insanity)
             -- local pmax = UnitPowerMax(unit)
             local shine = p >= voidformCost
             if voidform then shine = nil end
@@ -207,7 +216,6 @@ function NugEnergy.Initialize(self)
             return p, nil, voidform, shine, capped
         end
         self.UNIT_AURA = function(self, event, unit)
-            if unit ~= "player" then return end
             voidform = ( FindAura("player", 194249, "HELPFUL") ~= nil)
             self:UpdateEnergy()
         end
@@ -217,14 +225,16 @@ function NugEnergy.Initialize(self)
         self.SPELLS_CHANGED = function(self)
             if GetSpecialization() == 3 then
                 PowerFilter = "INSANITY"
-                voidformCost = IsPlayerSpell(193225) and 65 or 100 -- Legacy of the Void
+                PowerTypeIndex = Enum.PowerType.Insanity
+                voidformCost = IsPlayerSpell(193225) and 60 or 90 -- Legacy of the Void
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
-                self:RegisterEvent("UNIT_AURA");
+                self:RegisterUnitEvent("UNIT_AURA", "player");
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:RegisterEvent("PLAYER_REGEN_ENABLED")
             else
                 PowerFilter = nil
+                PowerTypeIndex = nil
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("UNIT_POWER_FREQUENT");
                 self:UnregisterEvent("UNIT_AURA");
@@ -245,6 +255,7 @@ function NugEnergy.Initialize(self)
             shouldBeFull = false
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
+                PowerTypeIndex = Enum.PowerType.Energy
                 shouldBeFull = true
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
@@ -258,6 +269,7 @@ function NugEnergy.Initialize(self)
                 self:UPDATE_STEALTH()
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
+                PowerTypeIndex = Enum.PowerType.Rage
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
@@ -272,6 +284,7 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 PowerFilter = "LUNAR_POWER"
+                PowerTypeIndex = Enum.PowerType.LunarPower
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
@@ -282,6 +295,7 @@ function NugEnergy.Initialize(self)
                 self:UPDATE_STEALTH()
             else
                 PowerFilter = nil
+                PowerTypeIndex = nil
                 self:UnregisterEvent("UNIT_POWER_UPDATE")
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
@@ -308,8 +322,10 @@ function NugEnergy.Initialize(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "FURY" then
                 PowerFilter = "FURY"
+                PowerTypeIndex = Enum.PowerType.Fury
             else
                 PowerFilter = "PAIN"
+                PowerTypeIndex = Enum.PowerType.Pain
             end
         end
         self:UNIT_DISPLAYPOWER()
@@ -321,6 +337,7 @@ function NugEnergy.Initialize(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
+                PowerTypeIndex = Enum.PowerType.Energy
                 shouldBeFull = true
                 -- GetPower = GetPowerBy5
                 -- GetPower = function(unit)
@@ -343,6 +360,7 @@ function NugEnergy.Initialize(self)
             else
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
                 PowerFilter = nil
+                PowerTypeIndex = nil
                 self:SetScript("OnUpdate", nil)
                 self:Hide()
             end
@@ -367,6 +385,7 @@ function NugEnergy.Initialize(self)
         self:SPELLS_CHANGED()
     elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
         PowerFilter = "RUNIC_POWER"
+        PowerTypeIndex = Enum.PowerType.RunicPower
         local execute = false
         GetPower = function(unit)
             local p = UnitPower(unit)
@@ -386,6 +405,7 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
+        PowerTypeIndex = Enum.PowerType.Rage
         local execute = false
         local GetSpecialization = GetSpecialization
         local GetShapeshiftForm = GetShapeshiftForm
@@ -416,25 +436,33 @@ function NugEnergy.Initialize(self)
 
     elseif class == "HUNTER" and NugEnergyDB.focus then
         PowerFilter = "FOCUS"
+        PowerTypeIndex = Enum.PowerType.Focus
         shouldBeFull = true
         self:SetScript("OnUpdate",self.UpdateEnergy)
         GetPower = GetPowerBy5
 
     elseif class == "SHAMAN" and NugEnergyDB.maelstrom then
         PowerFilter = "MAELSTROM"
+        PowerTypeIndex = Enum.PowerType.Maelstrom
         GetPower = RageBarGetPower(30, 10)
 
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
             if spec == 1 or spec == 2 then
+                PowerFilter = "MAELSTROM"
+                PowerTypeIndex = Enum.PowerType.Maelstrom
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
             else
+                PowerFilter = nil
+                PowerTypeIndex = nil
+                self:UnregisterEvent("UNIT_POWER_UPDATE")
                 self:UnregisterEvent("UNIT_MAXPOWER")
-                self:UnregisterEvent("UNIT_POWER_FREQUENT");
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                self:SetScript("OnUpdate", nil)
+                self:UPDATE_STEALTH()
             end
         end
         self:SPELLS_CHANGED()
