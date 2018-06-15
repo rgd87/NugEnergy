@@ -35,6 +35,9 @@ local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
 
+local execute = false
+local execute_range = nil
+
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
 local Enum_PowerType_Energy = EPT.Energy
@@ -163,6 +166,21 @@ local GetPowerBy5 = function(unit)
     -- p, p2, execute, shine, capped, insufficient
     return p, math_modf(p/5)*5, nil, nil, p == pmax, nil
 end
+
+local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
+    return function(unit)
+        local p = UnitPower(unit, PowerTypeIndex)
+        local pmax = UnitPowerMax(unit, PowerTypeIndex)
+        local shine = shineZone and (p >= pmax-shineZone)
+        -- local state
+        -- if p >= pmax-10 then state = "CAPPED" end
+        -- if GetSpecialization() == 3  p < 60 pmax-10
+        local capped = p >= pmax-cappedZone
+        local p2 = throttleText and math_modf(p/5)*5
+        return p, p2, execute, shine, capped, (minLimit and p < minLimit)
+    end
+end
+
 function NugEnergy.Initialize(self)
     self:RegisterEvent("UNIT_POWER_UPDATE")
     self:RegisterEvent("UNIT_MAXPOWER")
@@ -176,19 +194,7 @@ function NugEnergy.Initialize(self)
         self.initialized = true
     end
 
-    local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
-        return function(unit)
-            local p = UnitPower(unit, PowerTypeIndex)
-            local pmax = UnitPowerMax(unit, PowerTypeIndex)
-            local shine = p >= pmax-shineZone
-            -- local state
-            -- if p >= pmax-10 then state = "CAPPED" end
-            -- if GetSpecialization() == 3  p < 60 pmax-10
-            local capped = p >= pmax-cappedZone
-            local p2 = throttleText and math_modf(p/5)*5
-            return p, p2, execute, shine, capped, (minLimit and p < minLimit)
-        end
-    end
+    
 
     local class = select(2,UnitClass("player"))
     if class == "ROGUE" and NugEnergyDB.energy then
@@ -197,8 +203,27 @@ function NugEnergy.Initialize(self)
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-        GetPower = GetPowerBy5
+        -- GetPower = GetPowerBy5
         -- self:RegisterEvent("PLAYER_TARGET_CHANGED")
+
+        GetPower = RageBarGetPower(nil, 5, nil, true)
+
+
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            local spec = GetSpecialization()
+            if spec == 1 and IsPlayerSpell(111240) then --blindside
+                execute_range = 0.30 
+                self:RegisterUnitEvent("UNIT_HEALTH", "target")
+                self:RegisterEvent("PLAYER_TARGET_CHANGED")
+            else
+                execute_range = nil
+                execute = nil
+                self:UnregisterEvent("UNIT_HEALTH")
+                self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+            end
+        end
+        self:SPELLS_CHANGED()
 
 
     elseif class == "PRIEST" and NugEnergyDB.insanity then
@@ -372,67 +397,56 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
+            local ShardsPowerTypeIndex = Enum.PowerType.SoulShards
             -- GetPower = function(unit) return UnitPower(unit, SPELL_POWER_SOUL_SHARDS) end
             GetPower = function(unit)
-                local p = UnitPower(unit, SPELL_POWER_SOUL_SHARDS, true)
-                local pmax = UnitPowerMax(unit, SPELL_POWER_SOUL_SHARDS, true)
+                local p = UnitPower(unit, ShardsPowerTypeIndex, true)
+                local pmax = UnitPowerMax(unit, ShardsPowerTypeIndex, true)
                 -- p, p2, execute, shine, capped, insufficient
                 return p, math_modf(p/10), nil, nil, p == pmax, nil
             end
-            GetPowerMax = function(unit) return UnitPowerMax(unit, SPELL_POWER_SOUL_SHARDS, true) end
+            GetPowerMax = function(unit) return UnitPowerMax(unit, ShardsPowerTypeIndex, true) end
             PowerFilter = "SOUL_SHARDS"
         end
         self:SPELLS_CHANGED()
     elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
         PowerFilter = "RUNIC_POWER"
         PowerTypeIndex = Enum.PowerType.RunicPower
-        local execute = false
-        GetPower = function(unit)
-            local p = UnitPower(unit)
-            local pmax = UnitPowerMax(unit)
-            local shine = p >= pmax-30
-            local capped = p >= pmax-10
-            return p, nil, execute, shine, capped
-        end
-        self.UNIT_HEALTH = function(self, event, unit)
-            if unit ~= "target" then return end
-            local uhm = UnitHealthMax(unit)
-            if uhm == 0 then uhm = 1 end
-            execute = UnitHealth(unit)/uhm < 0.35
-            self:UpdateEnergy()
-        end
-        self.PLAYER_TARGET_CHANGED = function(self,event) self.UNIT_HEALTH(self,event,"target") end
-        self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
+        GetPower = RageBarGetPower(30, 10, nil, nil)
+
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
         PowerTypeIndex = Enum.PowerType.Rage
-        local execute = false
-        local GetSpecialization = GetSpecialization
-        local GetShapeshiftForm = GetShapeshiftForm
-        GetPower = function(unit)
-            local p = UnitPower(unit)
-            local pmax = UnitPowerMax(unit)
-            local shine = p >= pmax-30
-            local capped = p >= pmax-10
-            local insufficient
-            -- local state
-            -- if p >= pmax-10 then state = "CAPPED" end
-            if p < 20 and GetSpecialization() == 3 then insufficient = true end
-            return p, nil, execute, shine, capped, insufficient
-        end
-        self.UNIT_HEALTH = function(self, event, unit)
-            if unit ~= "target" then return end
-            local uhm = UnitHealthMax(unit)
-            if uhm == 0 then uhm = 1 end
-            execute = GetSpecialization() ~= 3 and UnitHealth(unit)/uhm < 0.2
-            self:UpdateEnergy()
-        end
-        self.PLAYER_TARGET_CHANGED = function(self,event)
-            if UnitExists('target') then
-                self.UNIT_HEALTH(self,event,"target")
+
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            local spec = GetSpecialization()
+            if spec == 1 then
+                execute_range = IsPlayerSpell(281001) and 0.35 or 0.2 -- Arms Massacre
+                GetPower = RageBarGetPower(30, 10, nil, nil)
+                self:RegisterUnitEvent("UNIT_HEALTH", "target")
+                self:RegisterEvent("PLAYER_TARGET_CHANGED")
+            elseif spec == 2 then
+                execute_range = IsPlayerSpell(206315) and 0.35 or 0.2 -- Fury Massacre
+                local maxRage = UnitPowerMax("player", PowerTypeIndex)
+
+                local rampageCost = IsPlayerSpell(215571) and 95 or 85 -- Frothing Berserker
+                if IsPlayerSpell(202922) then -- Carnage
+                    rampageCost = rampageCost - 10
+                end
+                GetPower = RageBarGetPower(maxRage-rampageCost, maxRage-rampageCost, nil, nil)
+
+                self:RegisterUnitEvent("UNIT_HEALTH", "target")
+                self:RegisterEvent("PLAYER_TARGET_CHANGED")
+            else
+                execute_range = nil
+                execute = nil
+                GetPower = RageBarGetPower(30, 10, nil, nil)
+                self:UnregisterEvent("UNIT_HEALTH")
+                self:UnregisterEvent("PLAYER_TARGET_CHANGED")
             end
         end
-        self:RegisterEvent("UNIT_HEALTH"); self:RegisterEvent("PLAYER_TARGET_CHANGED")
+        self:SPELLS_CHANGED()
 
     elseif class == "HUNTER" and NugEnergyDB.focus then
         PowerFilter = "FOCUS"
@@ -560,7 +574,23 @@ NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 --     end
 -- end
 
+function NugEnergy.UNIT_HEALTH(self, event, unit)
+    if unit ~= "target" then return end
+    local uhm = UnitHealthMax(unit)
+    if uhm == 0 then uhm = 1 end
+    if execute_range then
+        execute = UnitHealth(unit)/uhm < execute_range
+    else
+        execute = false
+    end
+    self:UpdateEnergy()
+end
 
+function NugEnergy.PLAYER_TARGET_CHANGED(self,event)
+    if UnitExists('target') then
+        self.UNIT_HEALTH(self,event,"target")
+    end
+end
 
 
 function NugEnergy.UNIT_MAXPOWER(self)
