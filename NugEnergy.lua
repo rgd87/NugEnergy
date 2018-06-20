@@ -203,8 +203,7 @@ function NugEnergy.Initialize(self)
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-        -- GetPower = GetPowerBy5
-        -- self:RegisterEvent("PLAYER_TARGET_CHANGED")
+
 
         GetPower = RageBarGetPower(nil, 5, nil, true)
 
@@ -342,13 +341,14 @@ function NugEnergy.Initialize(self)
 
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self.UNIT_DISPLAYPOWER = function(self)
-            GetPower = RageBarGetPower(30, 10)
             self:RegisterEvent("UNIT_POWER_FREQUENT")
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "FURY" then
+                GetPower = RageBarGetPower(30, 10)
                 PowerFilter = "FURY"
                 PowerTypeIndex = Enum.PowerType.Fury
             else
+                GetPower = RageBarGetPower(30, 10, 30)
                 PowerFilter = "PAIN"
                 PowerTypeIndex = Enum.PowerType.Pain
             end
