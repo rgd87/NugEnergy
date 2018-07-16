@@ -4,6 +4,9 @@
 ## Author: d87
 ## SavedVariables: NugEnergyDB
 ## SavedVariablesPerCharacter: NugEnergyDB_Character
+## Version: @project-version@
+
+## X-WoWI-ID: 9099
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
