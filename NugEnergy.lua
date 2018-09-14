@@ -5,6 +5,7 @@ local fadeAfter = 3
 local onlyText = false
 local shouldBeFull = false
 local isFull = true
+local isVertical
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -16,6 +17,8 @@ end)
 local LSM = LibStub("LibSharedMedia-3.0")
 
 LSM:Register("statusbar", "Glamour7", [[Interface\AddOns\NugEnergy\statusbar.tga]])
+LSM:Register("statusbar", "NugEnergyVertical", [[Interface\AddOns\NugEnergy\vstatusbar.tga]])
+
 LSM:Register("font", "Emblem", [[Interface\AddOns\NugEnergy\Emblem.ttf]], GetLocale() ~= "enUS" and 15)
 
 local getStatusbar = function() return LSM:Fetch("statusbar", NugEnergyDB.textureName) end
@@ -87,6 +90,7 @@ local defaults = {
     fontSize = 25,
     textColor = {1,1,1, 0.3},
     outOfCombatAlpha = 0,
+    isVertical = false,
 }
 
 local free_marks = {}
@@ -126,6 +130,8 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB_Character = NugEnergyDB_Character or {}
     NugEnergyDB_Character.marks = NugEnergyDB_Character.marks or { [0] = {}, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
+
+    isVertical = NugEnergyDB.isVertical
 
     NugEnergy:Initialize()
 
@@ -683,13 +689,44 @@ function NugEnergy:Resize()
     local f = self
     local width = NugEnergyDB.width
     local height = NugEnergyDB.height
-    if vertical then
+    local text = f.text
+    if isVertical then
         height, width = width, height
+        f:SetWidth(width)
+        f:SetHeight(height)
+
         f:SetOrientation("VERTICAL")
+
+        f.spark:ClearAllPoints()
+        f.spark:SetWidth(width)
+        f.spark:SetHeight(width*2)
+        f.spark:SetTexCoord(1,1,0,1,1,0,0,0)
+
+        text:ClearAllPoints()
+        text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
+        text:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0,0)
+        text:SetJustifyH("CENTER")
+        text:SetJustifyV("TOP")
+    else
+        f:SetWidth(width)
+        f:SetHeight(height)
+
+        f:SetOrientation("HORIZONTAL")
+
+        f.spark:ClearAllPoints()
+        f.spark:SetTexCoord(0,1,0,1)
+        f.spark:SetWidth(height*2)
+        f.spark:SetHeight(height)
+
+        text:ClearAllPoints()
+        text:SetPoint("LEFT",f,"LEFT",0, -2)
+        text:SetPoint("RIGHT",f,"RIGHT",-7, -2)
+        text:SetJustifyH("RIGHT")
+        text:SetJustifyV("CENTER")
     end
 
-    f:SetWidth(width)
-    f:SetHeight(height)
+    f.spentBar:ClearAllPoints()
+    self:UpdateEnergy()
 
     local tex = getStatusbar()
     f:SetStatusBarTexture(tex)
@@ -697,12 +734,10 @@ function NugEnergy:Resize()
     f.spentBar:SetTexture(tex)
 
     f.spentBar:SetWidth(width)
-    f.spentBar:SetHeight(height*1)
-    f.spark:SetWidth(height*2)
-    f.spark:SetHeight(height)
+    f.spentBar:SetHeight(height)
 
     local hmul,vmul = 1.5, 1.8
-    if vertical then hmul, vmul = vmul, hmul end
+    if isVertical then hmul, vmul = vmul, hmul end
     f.alertFrame:SetWidth(width*hmul)
     f.alertFrame:SetHeight(height*vmul)
 end
@@ -736,7 +771,7 @@ function NugEnergy.Create(self)
     local f = self
     local width = NugEnergyDB.width
     local height = NugEnergyDB.height
-    if vertical then
+    if isVertical then
         height, width = width, height
         f:SetOrientation("VERTICAL")
     end
@@ -763,7 +798,12 @@ function NugEnergy.Create(self)
     local spark = f:CreateTexture(nil, "ARTWORK", nil, 4)
     spark:SetBlendMode("ADD")
     spark:SetTexture([[Interface\AddOns\NugEnergy\spark.tga]])
-    spark:SetSize(f:GetHeight()*2, f:GetHeight())
+    if isVertical then
+        spark:SetSize(f:GetWidth(), f:GetWidth()*2)
+        spark:SetTexCoord(1,1,0,1,1,0,0,0)
+    else
+        spark:SetSize(f:GetHeight()*2, f:GetHeight())
+    end
     spark:SetPoint("CENTER", f, "TOP",0,0)
 
     f.spark = spark
@@ -803,6 +843,7 @@ function NugEnergy.Create(self)
         local cur = self:GetValue()
         local min, max = self:GetMinMaxValues()
         local fwidth = self:GetWidth()
+        local fheight = self:GetHeight()
         local total = max-min
 
         if spenderFeedback then
@@ -811,12 +852,21 @@ function NugEnergy.Create(self)
 
                 local p1 = new/max
                 local pd = (-diff/max)
-                local lpos = p1*fwidth
-                local len = pd*fwidth
+                
 
-                self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
-                self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
-                self.spentBar:SetWidth(len)
+                if isVertical then
+                    local lpos = p1*fheight
+                    local len = pd*fheight
+                    self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
+                    self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
+                    self.spentBar:SetHeight(len)
+                else
+                    local lpos = p1*fwidth
+                    local len = pd*fwidth
+                    self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
+                    self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
+                    self.spentBar:SetWidth(len)
+                end
                 if self.trail:IsPlaying() then self.trail:Stop() end
                 self.trail:Play()
                 self.spentBar.currentValue = cur
@@ -842,8 +892,11 @@ function NugEnergy.Create(self)
                 self.spark:SetAlpha(1)
             end
         end
-        local len = p*fwidth
-        self.spark:SetPoint("CENTER", self, "LEFT", len, 0)
+        if isVertical then
+            self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
+        else
+            self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
+        end
 
         return self:_SetValue(new)
     end
@@ -904,7 +957,7 @@ function NugEnergy.Create(self)
     --at:SetTexture([[Interface\AchievementFrame\UI-Achievement-IconFrame]])
     --at:SetTexCoord(0,0.5625,0,0.5625)
     local hmul,vmul = 1.5, 1.8
-    if vertical then hmul, vmul = vmul, hmul end
+    if isVertical then hmul, vmul = vmul, hmul end
     at:SetWidth(width*hmul)
     at:SetHeight(height*vmul)
     at:SetPoint("CENTER",self,"CENTER",0,0)
@@ -978,7 +1031,7 @@ function NugEnergy.Create(self)
     local font = getFont()
     local fontSize = NugEnergyDB.fontSize
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
-    if vertical then
+    if isVertical then
         text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
         text:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0,0)
         text:SetJustifyH("CENTER")
@@ -1054,6 +1107,11 @@ NugEnergy.Commands = {
     end,
     ["reset"] = function(v)
         NugEnergy:SetPoint("CENTER",UIParent,"CENTER",0,0)
+    end,
+    ["vertical"] = function(v)
+        NugEnergyDB.isVertical = not NugEnergyDB.isVertical
+        isVertical = NugEnergyDB.isVertical
+        NugEnergy:Resize()
     end,
     ["rage"] = function(v)
         NugEnergyDB.rage = not NugEnergyDB.rage
@@ -1326,7 +1384,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergyDB.outOfCombatAlpha = tonumber(v)
                                 end,
                                 min = 0,
-                                max = 0.8,
+                                max = 1,
                                 step = 0.05,
                                 order = 1,
                             },
@@ -1391,7 +1449,13 @@ function NugEnergy:CreateGUI()
                             -- },
                         },
                     },
-
+                    isVertical = {
+                        name = "Vertical",
+                        type = "toggle",
+                        order = 2.5,
+                        get = function(info) return NugEnergyDB.isVertical end,
+                        set = function(info, v) NugEnergy.Commands.vertical() end
+                    },
                     textGroup = {
                         type = "group",
                         name = "",
