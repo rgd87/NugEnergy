@@ -700,7 +700,7 @@ function NugEnergy:Resize()
         f.spark:ClearAllPoints()
         f.spark:SetWidth(width)
         f.spark:SetHeight(width*2)
-        f.spark:SetTexCoord(1,1,0,1,1,0,0,0)
+        f.spark:SetTexCoord(0,1,0,0,1,1,1,0)
 
         text:ClearAllPoints()
         text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
