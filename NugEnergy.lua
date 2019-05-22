@@ -189,17 +189,31 @@ local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
 end
 
 
-local lastEnergyTickTime
+local lastEnergyTickTime = GetTime()
+local lastEnergyValue = 0
 local ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
     return function(unit)
         local p = GetTime() - lastEnergyTickTime
         local p2 = UnitPower(unit, PowerTypeIndex)
         local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local shine = shineZone and (p >= pmax-shineZone)
-        local capped = p >= pmax-cappedZone
-        -- local p2 = throttleText and math_modf(p/5)*5
-        return p, p2, execute, shine, capped, (minLimit and p < minLimit)
+        local shine = shineZone and (p2 >= pmax-shineZone)
+        local capped = p2 >= pmax-cappedZone
+        -- local p2 = throttleText and math_modf(p2/5)*5 or p2
+        return p, p2, execute, shine, capped, (minLimit and p2 < minLimit)
     end
+end
+local ClassicRogue_UNIT_POWER_UPDATE = function(self, event,unit,powertype)
+    if powertype == PowerFilter then
+        local currentEnergy = UnitPower(unit, PowerTypeIndex)
+        if currentEnergy > lastEnergyValue then
+            lastEnergyTickTime = GetTime()
+        end
+        lastEnergyValue = currentEnergy
+        self:UpdateEnergy()
+    end
+end
+local ClassicRogue_UNIT_MAXPOWER = function(self)
+    self:SetMinMaxValues(0, 2)
 end
 
 function NugEnergy.Initialize(self)
@@ -224,8 +238,7 @@ function NugEnergy.Initialize(self)
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-        
-        
+
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
             if spec == 1 and IsPlayerSpell(111240) then --blindside
@@ -242,15 +255,8 @@ function NugEnergy.Initialize(self)
 
         if isClassic then
             GetPower = ClassicRogueTicker(nil, 19, 0, false)
-            NugEnergy.UNIT_POWER_UPDATE = function(self, event,unit,powertype)
-                if powertype == PowerFilter then 
-                    lastEnergyTickTime = GetTime()
-                    self:UpdateEnergy()
-                end
-            end
-            NugEnergy.UNIT_MAXPOWER = function(self)
-                self:SetMinMaxValues(0, 2)
-            end
+            NugEnergy.UNIT_POWER_UPDATE = ClassicRogue_UNIT_POWER_UPDATE
+            NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
             self:RegisterEvent("SPELLS_CHANGED")
@@ -310,6 +316,8 @@ function NugEnergy.Initialize(self)
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             shouldBeFull = false
+            -- restore to original MAXPOWER in case it was switched for classic energy
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.__UNIT_MAXPOWER
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
@@ -320,7 +328,13 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                GetPower = GetPowerBy5
+                if isClassic then
+                    GetPower = ClassicRogueTicker(nil, 19, 0, false)
+                    NugEnergy.UNIT_POWER_UPDATE = ClassicRogue_UNIT_POWER_UPDATE
+                    NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
+                else
+                    GetPower = RageBarGetPower(nil, 5, nil, true)
+                end
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate",self.UpdateEnergy)
                 self:UPDATE_STEALTH()
@@ -633,6 +647,7 @@ function NugEnergy.UNIT_MAXPOWER(self)
         mark:Update()
     end
 end
+NugEnergy.__UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
 
 local fadeTime = 1
 local fader = CreateFrame("Frame", nil, NugEnergy)
