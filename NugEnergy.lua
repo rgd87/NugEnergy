@@ -6,6 +6,7 @@ local onlyText = false
 local shouldBeFull = false
 local isFull = true
 local isVertical
+local isClassic = select(4,GetBuildInfo()) <= 19999
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -187,6 +188,20 @@ local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
     end
 end
 
+
+local lastEnergyTickTime
+local ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
+    return function(unit)
+        local p = GetTime() - lastEnergyTickTime
+        local p2 = UnitPower(unit, PowerTypeIndex)
+        local pmax = UnitPowerMax(unit, PowerTypeIndex)
+        local shine = shineZone and (p >= pmax-shineZone)
+        local capped = p >= pmax-cappedZone
+        -- local p2 = throttleText and math_modf(p/5)*5
+        return p, p2, execute, shine, capped, (minLimit and p < minLimit)
+    end
+end
+
 function NugEnergy.Initialize(self)
     self:RegisterEvent("UNIT_POWER_UPDATE")
     self:RegisterEvent("UNIT_MAXPOWER")
@@ -209,12 +224,8 @@ function NugEnergy.Initialize(self)
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
-
-
-        GetPower = RageBarGetPower(nil, 5, nil, true)
-
-
-        self:RegisterEvent("SPELLS_CHANGED")
+        
+        
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
             if spec == 1 and IsPlayerSpell(111240) then --blindside
@@ -228,7 +239,23 @@ function NugEnergy.Initialize(self)
                 self:UnregisterEvent("PLAYER_TARGET_CHANGED")
             end
         end
-        self:SPELLS_CHANGED()
+
+        if isClassic then
+            GetPower = ClassicRogueTicker(nil, 19, 0, false)
+            NugEnergy.UNIT_POWER_UPDATE = function(self, event,unit,powertype)
+                if powertype == PowerFilter then 
+                    lastEnergyTickTime = GetTime()
+                    self:UpdateEnergy()
+                end
+            end
+            NugEnergy.UNIT_MAXPOWER = function(self)
+                self:SetMinMaxValues(0, 2)
+            end
+        else
+            GetPower = RageBarGetPower(nil, 5, nil, true)
+            self:RegisterEvent("SPELLS_CHANGED")
+            self:SPELLS_CHANGED()
+        end
 
 
     elseif class == "PRIEST" and NugEnergyDB.insanity then
@@ -1218,11 +1245,13 @@ function NugEnergy.CreateMark(self, at)
 
         local ag = spark:CreateAnimationGroup()
         local a1 = ag:CreateAnimation("Alpha")
-        a1:SetChange(1)
+        a1:SetFromAlpha(0)
+        a1:SetToAlpha(1)
         a1:SetDuration(0.2)
         a1:SetOrder(1)
         local a2 = ag:CreateAnimation("Alpha")
-        a2:SetChange(-1)
+        a1:SetFromAlpha(1)
+        a1:SetToAlpha(0)
         a2:SetDuration(0.4)
         a2:SetOrder(2)
 
