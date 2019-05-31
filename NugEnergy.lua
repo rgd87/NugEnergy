@@ -7,6 +7,7 @@ local shouldBeFull = false
 local isFull = true
 local isVertical
 local isClassic = select(4,GetBuildInfo()) <= 19999
+local GetSpecialization = isClassic and function() end or _G.GetSpecialization
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -89,7 +90,7 @@ local defaults = {
     textureName = "Glamour7",
     fontName = "Emblem",
     fontSize = 25,
-    textColor = {1,1,1, 0.3},
+    textColor = {1,1,1, isClassic and 0.8 or 0.3},
     outOfCombatAlpha = 0,
     isVertical = false,
 }
@@ -202,15 +203,14 @@ local ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleTex
         return p, p2, execute, shine, capped, (minLimit and p2 < minLimit)
     end
 end
-local ClassicRogue_UNIT_POWER_UPDATE = function(self, event,unit,powertype)
-    if powertype == PowerFilter then
-        local currentEnergy = UnitPower(unit, PowerTypeIndex)
-        if currentEnergy > lastEnergyValue then
-            lastEnergyTickTime = GetTime()
-        end
-        lastEnergyValue = currentEnergy
-        self:UpdateEnergy()
+local ClassicTickerFrame = CreateFrame("Frame")
+local ClassicTickerOnUpdate = function(self)
+    local currentEnergy = UnitPower("player", PowerTypeIndex)
+    local now = GetTime()
+    if currentEnergy > lastEnergyValue or now >= lastEnergyTickTime + 2 then
+        lastEnergyTickTime = now
     end
+    lastEnergyValue = currentEnergy
 end
 local ClassicRogue_UNIT_MAXPOWER = function(self)
     self:SetMinMaxValues(0, 2)
@@ -255,7 +255,7 @@ function NugEnergy.Initialize(self)
 
         if isClassic then
             GetPower = ClassicRogueTicker(nil, 19, 0, false)
-            NugEnergy.UNIT_POWER_UPDATE = ClassicRogue_UNIT_POWER_UPDATE
+            ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
             NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
@@ -330,14 +330,14 @@ function NugEnergy.Initialize(self)
                 -- self.UpdateEnergy = self.__UpdateEnergy
                 if isClassic then
                     GetPower = ClassicRogueTicker(nil, 19, 0, false)
-                    NugEnergy.UNIT_POWER_UPDATE = ClassicRogue_UNIT_POWER_UPDATE
                     NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
+                    ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
                 end
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate",self.UpdateEnergy)
                 self:UPDATE_STEALTH()
+                self:SetScript("OnUpdate",self.UpdateEnergy)
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
                 PowerTypeIndex = Enum.PowerType.Rage
@@ -742,7 +742,7 @@ function NugEnergy:Resize()
         f.spark:ClearAllPoints()
         f.spark:SetWidth(width)
         f.spark:SetHeight(width*2)
-        f.spark:SetTexCoord(0,1,0,0,1,1,1,0)
+        f.spark:SetTexCoord(1,1,0,1,1,0,0,0)
 
         text:ClearAllPoints()
         text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
