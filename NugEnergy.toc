@@ -1,4 +1,4 @@
-## Interface: 80200
+## Interface: 11302
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
@@ -6,7 +6,7 @@
 ## SavedVariablesPerCharacter: NugEnergyDB_Character
 ## Version: @project-version@
 
-## X-WoWI-ID: 9099
+## X-WoWI-ID: 24934
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
