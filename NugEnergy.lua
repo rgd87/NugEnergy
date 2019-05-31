@@ -188,6 +188,13 @@ local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
     end
 end
 
+local IsAnySpellKnown = function (...)
+    for i=1, select("#", ...) do
+        local spellID = select(i, ...)
+        if not spellID then break end
+        if IsPlayerSpell(spellID) then return spellID end
+    end
+end
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
@@ -331,36 +338,12 @@ function NugEnergy.Initialize(self)
         PowerFilter = "RAGE"
         PowerTypeIndex = Enum.PowerType.Rage
 
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            local spec = GetSpecialization()
-            if spec == 1 then
-                execute_range = IsPlayerSpell(281001) and 0.35 or 0.2 -- Arms Massacre
-                GetPower = RageBarGetPower(30, 10, nil, nil)
-                self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:RegisterEvent("PLAYER_TARGET_CHANGED")
-            elseif spec == 2 then
-                execute_range = IsPlayerSpell(206315) and 0.35 or 0.2 -- Fury Massacre
-                local maxRage = UnitPowerMax("player", PowerTypeIndex)
-
-                local rampageCost = IsPlayerSpell(215571) and 95 or 85 -- Frothing Berserker
-                if IsPlayerSpell(202922) then -- Carnage
-                    rampageCost = rampageCost - 10
-                end
-                GetPower = RageBarGetPower(maxRage-rampageCost, maxRage-rampageCost, nil, nil)
-
-                self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:RegisterEvent("PLAYER_TARGET_CHANGED")
-            else
-                execute_range = nil
-                execute = nil
-                GetPower = RageBarGetPower(30, 10, nil, nil)
-                self:UnregisterEvent("UNIT_HEALTH")
-                self:UnregisterEvent("PLAYER_TARGET_CHANGED")
-            end
+        GetPower = RageBarGetPower(30, 10, nil, nil)
+        if IsAnySpellKnown(20662, 20661, 20660, 20658, 5308) then
+            execute_range = 0.2
+            self:RegisterUnitEvent("UNIT_HEALTH", "target")
+            self:RegisterEvent("PLAYER_TARGET_CHANGED")
         end
-        self:SPELLS_CHANGED()
-
     else
         self:UnregisterAllEvents()
         self:SetScript("OnUpdate", nil)
