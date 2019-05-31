@@ -56,15 +56,8 @@ local defaults = {
     point = "CENTER",
     x = 0, y = 0,
     marks = {},
-    focus = true,
     rage = true,
     energy = true,
-    fury = true,
-    shards = false,
-    runic = true,
-    balance = true,
-    insanity = true,
-    maelstrom = true,
 
     -- powerTypeColors = true,
     -- focusColor = true
@@ -969,47 +962,12 @@ NugEnergy.Commands = {
         NugEnergyDB.energy = not NugEnergyDB.energy
         NugEnergy:Initialize()
     end,
-    ["focus"] = function(v)
-        NugEnergyDB.focus = not NugEnergyDB.focus
-        NugEnergy:Initialize()
-    end,
-    ["shards"] = function(v)
-        NugEnergyDB.shards = not NugEnergyDB.shards
-        NugEnergy:Initialize()
-    end,
-    ["runic"] = function(v)
-        NugEnergyDB.runic = not NugEnergyDB.runic
-        NugEnergy:Initialize()
-    end,
-    ["balance"] = function(v)
-        NugEnergyDB.balance = not NugEnergyDB.balance
-        NugEnergy:Initialize()
-    end,
-    ["insanity"] = function(v)
-        NugEnergyDB.insanity = not NugEnergyDB.insanity
-        NugEnergy:Initialize()
-    end,
-    ["fury"] = function(v)
-        NugEnergyDB.fury = not NugEnergyDB.fury
-        NugEnergy:Initialize()
-    end,
-    ["maelstrom"] = function(v)
-        NugEnergyDB.maelstrom = not NugEnergyDB.maelstrom
-        NugEnergy:Initialize()
-    end,
 }
 
 local helpMessage = {
     "|cff00ff00/nen lock|r",
     "|cff00ff00/nen unlock|r",
     "|cff00ff00/nen reset|r",
-    "|cff00ff00/nen focus|r",
-    "|cff00ff00/nen monk|r",
-    "|cff00ff00/nen fury|r",
-    "|cff00ff00/nen insanity|r",
-    "|cff00ff00/nen runic|r",
-    "|cff00ff00/nen balance|r",
-    "|cff00ff00/nen shards|r",
 }
 
 function NugEnergy.SlashCmd(msg)
@@ -1359,56 +1317,7 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.rage end,
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
-                            focus = {
-                                name = "Focus",
-                                type = "toggle",
-                                order = 3,
-                                get = function(info) return NugEnergyDB.focus end,
-                                set = function(info, v) NugEnergy.Commands.focus() end
-                            },
-                            fury = {
-                                name = "Fury & Vengeance",
-                                type = "toggle",
-                                order = 4,
-                                get = function(info) return NugEnergyDB.fury end,
-                                set = function(info, v) NugEnergy.Commands.fury() end
-                            },
-                            runic = {
-                                name = "Runic Power",
-                                type = "toggle",
-                                order = 5,
-                                get = function(info) return NugEnergyDB.runic end,
-                                set = function(info, v) NugEnergy.Commands.runic() end
-                            },
-                            shards = {
-                                name = "Shards",
-                                type = "toggle",
-                                order = 6,
-                                get = function(info) return NugEnergyDB.shards end,
-                                set = function(info, v) NugEnergy.Commands.shards() end
-                            },
-                            insanity = {
-                                name = "Insanity",
-                                type = "toggle",
-                                order = 7,
-                                get = function(info) return NugEnergyDB.insanity end,
-                                set = function(info, v) NugEnergy.Commands.insanity() end
-                            },
-                            balance = {
-                                name = "Balance",
-                                type = "toggle",
-                                order = 8,
-                                get = function(info) return NugEnergyDB.balance end,
-                                set = function(info, v) NugEnergy.Commands.balance() end
-                            },
-                            maelstrom = {
-                                name = "Maelstrom",
-                                type = "toggle",
-                                order = 9,
-                                get = function(info) return NugEnergyDB.maelstrom end,
-                                set = function(info, v) NugEnergy.Commands.maelstrom() end
-                            },
-
+                            
                         },
                     },
                 },
