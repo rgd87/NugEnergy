@@ -50,18 +50,7 @@ local Enum_PowerType_RunicPower = EPT.RunicPower
 local Enum_PowerType_LunarPower = EPT.LunarPower
 local Enum_PowerType_Focus = EPT.Focus
 
-
-local IsBFA = GetBuildInfo():match("^8")
-local UnitAura = function(...)
-    local name, _, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod
-    if IsBFA then
-        name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod = UnitAura(...)
-    else
-        name, _, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod = UnitAura(...)
-    end
-    return name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, isCastByPlayer, nameplateShowAll, timeMod
-end
--- local UnitAura = UnitAura
+local UnitAura = UnitAura
 
 local defaults = {
     point = "CENTER",
