@@ -294,7 +294,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                GetPower = RageBarGetPower(30, 10, 45)
+                GetPower = RageBarGetPower(30, 10, nil, nil)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
