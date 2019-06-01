@@ -250,6 +250,7 @@ function NugEnergy.Initialize(self)
             self:RegisterEvent("SPELLS_CHANGED")
             self:SPELLS_CHANGED()
         end
+        self:UNIT_MAXPOWER()
 
 
 
@@ -280,6 +281,7 @@ function NugEnergy.Initialize(self)
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
                 end
+                self:UNIT_MAXPOWER()
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UPDATE_STEALTH()
                 self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -295,6 +297,7 @@ function NugEnergy.Initialize(self)
                 GetPower = RageBarGetPower(30, 10, 45)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
+                self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
             else
                 PowerFilter = nil
@@ -489,16 +492,17 @@ function NugEnergy:StopHiding()
 end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
-    if (UnitAffectingCombat("player") or (IsStealthed() and shouldBeFull and not isFull) or ForcedToShow) and PowerFilter then
+    if (UnitAffectingCombat("player") or (IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or ForcedToShow) and PowerFilter then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:SetAlpha(1)
         self:StopHiding()
         self:Show()
-    elseif doFadeOut and PowerFilter then
+    elseif doFadeOut and self:IsVisible() and self:GetAlpha() > NugEnergyDB.outOfCombatAlpha and PowerFilter then
         self:StartHiding()
     elseif NugEnergyDB.outOfCombatAlpha > 0 and PowerFilter then
         self:SetAlpha(NugEnergyDB.outOfCombatAlpha)
+        self:Show()
     else
         self:Hide()
     end
@@ -891,7 +895,12 @@ function NugEnergy.Create(self)
 
     f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
 
-    f:Hide()
+    local oocA = NugEnergyDB.outOfCombatAlpha
+    if oocA > 0 then
+        f:SetAlpha(oocA)
+    else
+        f:Hide()
+    end
 
     f:EnableMouse(false)
     f:RegisterForDrag("LeftButton")
@@ -1190,6 +1199,8 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.outOfCombatAlpha end,
                                 set = function(info, v)
                                     NugEnergyDB.outOfCombatAlpha = tonumber(v)
+                                    NugEnergy:Hide()
+                                    NugEnergy:UPDATE_STEALTH()
                                 end,
                                 min = 0,
                                 max = 1,
