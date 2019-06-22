@@ -49,7 +49,7 @@ local Enum_PowerType_Energy = EPT.Energy
 local Enum_PowerType_RunicPower = EPT.RunicPower
 local Enum_PowerType_LunarPower = EPT.LunarPower
 local Enum_PowerType_Focus = EPT.Focus
-
+local class = select(2,UnitClass("player"))
 local UnitAura = UnitAura
 
 local defaults = {
@@ -65,7 +65,7 @@ local defaults = {
     width = 100,
     height = 30,
     normalColor = { 0.9, 0.1, 0.1 }, --1
-    altColor = { .9, 0.1, 0.4 }, -- for dispatch and meta 2 
+    altColor = { .9, 0.1, 0.4 }, -- for dispatch and meta 2
     maxColor = { 131/255, 0.2, 0.2 }, --max color 3
     lowColor = { 141/255, 31/255, 62/255 }, --low color 4
 
@@ -217,9 +217,7 @@ function NugEnergy.Initialize(self)
         self.initialized = true
     end
 
-    
 
-    local class = select(2,UnitClass("player"))
     if class == "ROGUE" and NugEnergyDB.energy then
         PowerFilter = "ENERGY"
         PowerTypeIndex = Enum.PowerType.Energy
@@ -230,7 +228,7 @@ function NugEnergy.Initialize(self)
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
             if spec == 1 and IsPlayerSpell(111240) then --blindside
-                execute_range = 0.30 
+                execute_range = 0.30
                 self:RegisterUnitEvent("UNIT_HEALTH", "target")
                 self:RegisterEvent("PLAYER_TARGET_CHANGED")
             else
@@ -461,7 +459,7 @@ local HideTimer = function(self, time)
     local nen = self:GetParent()
     local p = fadeTime - ((self.OnUpdateCounter - fadeAfter) / fadeTime)
     -- if p < 0 then p = 0 end
-    -- local ooca = NugEnergyDB.outOfCombatAlpha 
+    -- local ooca = NugEnergyDB.outOfCombatAlpha
     -- local a = ooca + ((1 - ooca) * p)
     local pA = NugEnergyDB.outOfCombatAlpha
     local rA = 1 - NugEnergyDB.outOfCombatAlpha
@@ -492,7 +490,11 @@ function NugEnergy:StopHiding()
 end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
-    if (UnitAffectingCombat("player") or (IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or ForcedToShow) and PowerFilter then
+    if (UnitAffectingCombat("player") or
+        ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
+        ForcedToShow)
+        and PowerFilter
+    then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:SetAlpha(1)
@@ -697,7 +699,7 @@ function NugEnergy.Create(self)
 
                 local p1 = new/max
                 local pd = (-diff/max)
-                
+
 
                 if isVertical then
                     local lpos = p1*fheight
@@ -717,7 +719,7 @@ function NugEnergy.Create(self)
                 self.spentBar.currentValue = cur
             end
         end
-        
+
         -- spark
         local p = 0
         if total > 0 then
