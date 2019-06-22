@@ -1,3 +1,8 @@
+### 8.2.0:
+
+- Updated TOC to 80200
+- bugfixes for Druid
+
 ### 8.0.2:
 
 - vertical mode
@@ -15,7 +20,7 @@
 ### 7.3.4:
 
 - Out of combat alpha added to GUI options and now works with fading.
-- Voidform cost now 65 with Legacy of the Void talent 
+- Voidform cost now 65 with Legacy of the Void talent
 
 ### 7.3.3:
 
@@ -54,13 +59,13 @@
 
 ### 7.0.0:
 
-- Legion Update: added Insanity, Fury, Maelstrom, Lunar Power; removed 
+- Legion Update: added Insanity, Fury, Maelstrom, Lunar Power; removed
 Demonic Fury, Eclipse Energy
 - Spending feedback effect
 
 ### 6.0.1:
 
-- New color state for BrM monks and Protection warriors to indicate 
+- New color state for BrM monks and Protection warriors to indicate
 insufficient energy (<40) or rage (<60)
 
 ### 6.0.0:
@@ -85,7 +90,7 @@ insufficient energy (<40) or rage (<60)
 
 ### 4.2.3:
 
-- Warlock bugfix + shards and embers support for the sake of 
+- Warlock bugfix + shards and embers support for the sake of
 completeness
 
 ### 4.2.2a:
