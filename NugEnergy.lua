@@ -45,6 +45,13 @@ local GetPowerMax = UnitPowerMax
 local execute = false
 local execute_range = nil
 
+local twEnabled
+local twEnabledCappedOnly
+local twStart
+local twLength
+local twCrossfade
+
+
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
 local Enum_PowerType_Energy = EPT.Energy
@@ -77,6 +84,12 @@ local defaults = {
     textColor = {1,1,1, isClassic and 0.8 or 0.3},
     outOfCombatAlpha = 0,
     isVertical = false,
+
+    twEnabled = true,
+    twEnabledCappedOnly = true,
+    twStart = 0.9,
+    twLength = 0.4,
+    twCrossfade = 0.15,
 }
 
 local free_marks = {}
@@ -117,6 +130,12 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB_Character.marks = NugEnergyDB_Character.marks or { [0] = {}, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
 
     isVertical = NugEnergyDB.isVertical
+
+    twEnabled = NugEnergyDB.twEnabled
+    twEnabledCappedOnly = NugEnergyDB.twEnabledCappedOnly
+    twStart = NugEnergyDB.twStart
+    twLength = NugEnergyDB.twLength
+    twCrossfade = NugEnergyDB.twCrossfade
 
     NugEnergy:Initialize()
 
@@ -193,6 +212,38 @@ local ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleTex
         return p, p2, execute, shine, capped, (minLimit and p2 < minLimit)
     end
 end
+
+local function GetGradientColor(c1, c2, v)
+    if v > 1 then v = 1 end
+    local r = c1[1] + v*(c2[1]-c1[1])
+    local g = c1[2] + v*(c2[2]-c1[2])
+    local b = c1[3] + v*(c2[3]-c1[3])
+    return r,g,b
+end
+
+local GetTickProgress = function() return GetTime() - lastEnergyTickTime end
+
+local ClassicTickerColorUpdate = function(self, tp, prevColor)
+    local twSecondThreshold = twStart + twLength
+
+    if tp > twSecondThreshold then
+        local fp = twCrossfade > 0 and  ((twSecondThreshold + twCrossfade - tp) / twCrossfade) or 0
+        if fp < 0 then fp = 0 end
+        local cN = prevColor
+        local cA = NugEnergyDB.altColor
+        self:SetColor(GetGradientColor(cN, cA, fp))
+    elseif tp > twStart then
+        local fp = twCrossfade > 0 and  ((twStart + twCrossfade - tp) / twCrossfade) or 0
+        if fp < 0 then fp = 0 end
+        local cN = prevColor
+        local cA = NugEnergyDB.altColor
+        self:SetColor(GetGradientColor(cA, cN, fp))
+    elseif tp >= 0 then
+        local cN = prevColor
+        self:SetColor(unpack(cN))
+    end
+end
+
 local ClassicTickerFrame = CreateFrame("Frame")
 local ClassicTickerOnUpdate = function(self)
     local currentEnergy = UnitPower("player", PowerTypeIndex)
@@ -381,6 +432,10 @@ function NugEnergy.UpdateEnergy(self)
         end
         -- self.spentBar:SetColor(unpack(c))
         self:SetColor(unpack(c))
+
+        if timingColor and capped and GetTickProgress() > twStart then
+            ClassicTickerColorUpdate(self, GetTickProgress(), c)
+        end
 
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
