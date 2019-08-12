@@ -71,6 +71,8 @@ local defaults = {
     -- powerTypeColors = true,
     -- focusColor = true
 
+    hideText = false,
+
     width = 100,
     height = 30,
     normalColor = { 0.9, 0.1, 0.1 }, --1
@@ -651,6 +653,11 @@ function NugEnergy:ResizeText()
     local r,g,b,a = unpack(NugEnergyDB.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
+    if NugEnergyDB.hideText then
+        text:Hide()
+    else
+        text:Show()
+    end
 end
 
 local SparkSetValue = function(self, v)
@@ -1374,7 +1381,16 @@ function NugEnergy:CreateGUI()
                                 min = 5,
                                 max = 50,
                                 step = 1,
-                                order = 11,
+                            },
+                            hideText = {
+                                name = "Hide Text",
+                                type = "toggle",
+                                order = 3,
+                                get = function(info) return NugEnergyDB.hideText end,
+                                set = function(info, v)
+                                    NugEnergyDB.hideText = not NugEnergyDB.hideText
+                                    NugEnergy:ResizeText()
+                                end
                             },
                         },
                     },
