@@ -434,7 +434,7 @@ function NugEnergy.UpdateEnergy(self)
         -- self.spentBar:SetColor(unpack(c))
         self:SetColor(unpack(c))
 
-        if timingColor and capped and GetTickProgress() > twStart then
+        if twEnabled and (not twEnabledCappedOnly or capped) and GetTickProgress() > twStart then
             ClassicTickerColorUpdate(self, GetTickProgress(), c)
         end
 
@@ -1241,6 +1241,19 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:ResizeText()
                                 end,
                             },
+                            twColor = {
+                                name = "Tick Window Color",
+                                type = 'color',
+                                order = 6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.twColor)
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.twColor = {r,g,b}
+                                    NugEnergy:ResizeText()
+                                end,
+                            },
                         },
                     },
                     fadeGroup = {
@@ -1383,6 +1396,73 @@ function NugEnergy:CreateGUI()
                                 order = 2,
                                 get = function(info) return NugEnergyDB.rage end,
                                 set = function(info, v) NugEnergy.Commands.rage() end
+                            },
+                        },
+                    },
+                    twGroup = {
+                        type = "group",
+                        name = "Tick Window",
+                        order = 5,
+                        args = {
+                            twEnabled = {
+                                name = "Enabled",
+                                type = "toggle",
+                                order = 1,
+                                get = function(info) return NugEnergyDB.twEnabled end,
+                                set = function(info, v)
+                                    NugEnergyDB.twEnabled = not NugEnergyDB.twEnabled
+                                    twEnabled = NugEnergyDB.twEnabled
+                                end
+                            },
+                            twEnabledCappedOnly = {
+                                name = "Only If Capping",
+                                type = "toggle",
+                                width = "double",
+                                order = 2,
+                                get = function(info) return NugEnergyDB.twEnabledCappedOnly end,
+                                set = function(info, v)
+                                    NugEnergyDB.twEnabledCappedOnly = not NugEnergyDB.twEnabledCappedOnly
+                                    twEnabledCappedOnly = NugEnergyDB.twEnabledCappedOnly
+                                end
+                            },
+                            twStart = {
+                                name = "Start Time",
+                                type = "range",
+                                get = function(info) return NugEnergyDB.twStart end,
+                                set = function(info, v)
+                                    NugEnergyDB.twStart = tonumber(v)
+                                    twStart = NugEnergyDB.twStart
+                                end,
+                                min = 0,
+                                max = 2,
+                                step = 0.01,
+                                order = 3,
+                            },
+                            twLength = {
+                                name = "Window Length",
+                                type = "range",
+                                get = function(info) return NugEnergyDB.twLength end,
+                                set = function(info, v)
+                                    NugEnergyDB.twLength = tonumber(v)
+                                    twLength = NugEnergyDB.twLength
+                                end,
+                                min = 0,
+                                max = 1,
+                                step = 0.01,
+                                order = 4,
+                            },
+                            twCrossfade = {
+                                name = "Crossfade Length",
+                                type = "range",
+                                get = function(info) return NugEnergyDB.twCrossfade end,
+                                set = function(info, v)
+                                    NugEnergyDB.twCrossfade = tonumber(v)
+                                    twCrossfade = NugEnergyDB.twCrossfade
+                                end,
+                                min = 0,
+                                max = 0.5,
+                                step = 0.01,
+                                order = 4,
                             },
                         },
                     },
