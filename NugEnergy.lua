@@ -1,3 +1,5 @@
+local addonName, ns = ...
+
 local textoutline = false
 local spenderFeedback = true
 local doFadeOut = true
@@ -363,27 +365,23 @@ function NugEnergy.UpdateEnergy(self)
             -- self.glow:Hide()
             self.glow:Stop()
         end
+        local c
         if capped then
-            local c = NugEnergyDB.maxColor
-            self:SetColor(unpack(c))
-            -- self.spentBar:SetColor(unpack(c))
+            c = NugEnergyDB.maxColor
             self.glowanim:SetDuration(0.15)
         elseif execute then
-            local c = NugEnergyDB.altColor
-            self:SetColor(unpack(c))
-            -- self.spentBar:SetColor(unpack(c))
+            c = NugEnergyDB.altColor
             self.glowanim:SetDuration(0.3)
         elseif insufficient then
-            local c = NugEnergyDB.lowColor
-            self:SetColor(unpack(c))
-            -- self.spentBar:SetColor(unpack(c))
+            c = NugEnergyDB.lowColor
             self.glowanim:SetDuration(0.3)
         else
-            local c = NugEnergyDB.normalColor
-            self:SetColor(unpack(c))
-            -- self.spentBar:SetColor(unpack(c))
+            c = NugEnergyDB.normalColor
             self.glowanim:SetDuration(0.3)
         end
+        -- self.spentBar:SetColor(unpack(c))
+        self:SetColor(unpack(c))
+
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
         if self.marks[p] then self.marks[p].shine:Play() end
@@ -1330,7 +1328,6 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.rage end,
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
-                            
                         },
                     },
                 },
