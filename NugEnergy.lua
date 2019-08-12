@@ -77,6 +77,7 @@ local defaults = {
     altColor = { .9, 0.1, 0.4 }, -- for dispatch and meta 2
     maxColor = { 131/255, 0.2, 0.2 }, --max color 3
     lowColor = { 141/255, 31/255, 62/255 }, --low color 4
+    twColor = { 0.15, 0.9, 0.4 }, -- tick window color
 
     textureName = "Glamour7",
     fontName = "Emblem",
@@ -230,13 +231,13 @@ local ClassicTickerColorUpdate = function(self, tp, prevColor)
         local fp = twCrossfade > 0 and  ((twSecondThreshold + twCrossfade - tp) / twCrossfade) or 0
         if fp < 0 then fp = 0 end
         local cN = prevColor
-        local cA = NugEnergyDB.altColor
+        local cA = NugEnergyDB.twColor
         self:SetColor(GetGradientColor(cN, cA, fp))
     elseif tp > twStart then
         local fp = twCrossfade > 0 and  ((twStart + twCrossfade - tp) / twCrossfade) or 0
         if fp < 0 then fp = 0 end
         local cN = prevColor
-        local cA = NugEnergyDB.altColor
+        local cA = NugEnergyDB.twColor
         self:SetColor(GetGradientColor(cA, cN, fp))
     elseif tp >= 0 then
         local cN = prevColor
