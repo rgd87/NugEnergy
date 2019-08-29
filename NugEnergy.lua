@@ -1091,6 +1091,12 @@ function NugEnergy.Create(self)
     text:SetAlpha(a)
     f.text = text
 
+    if NugEnergyDB.hideText then
+        text:Hide()
+    else
+        text:Show()
+    end
+
     f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
 
     local oocA = NugEnergyDB.outOfCombatAlpha
