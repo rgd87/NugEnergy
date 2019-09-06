@@ -295,7 +295,7 @@ function NugEnergy.Initialize(self)
             end
         end
 
-        if isClassic then
+        if isClassic and NugEnergyDB.enableClassicTicker then
             GetPower = ClassicRogueTicker(nil, 19, 0, false)
             ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
             NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
