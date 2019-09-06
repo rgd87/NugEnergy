@@ -4,6 +4,7 @@ local textoutline = false
 local spenderFeedback = true
 local doFadeOut = true
 local fadeAfter = 5
+local fadeTime = 1
 local onlyText = false
 local shouldBeFull = false
 local isFull = true
@@ -44,6 +45,9 @@ local GetPowerMax = UnitPowerMax
 
 local execute = false
 local execute_range = nil
+
+local DruidRecentlyLeftCat = false
+local DruidLeftCatTimeout = 0
 
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
@@ -310,9 +314,18 @@ function NugEnergy.Initialize(self)
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             shouldBeFull = false
+
+            if newPowerType == "MANA" then
+                if  PowerFilter == "ENERGY" and not DruidRecentlyLeftCat then
+                    DruidRecentlyLeftCat = true
+                    DruidLeftCatTimeout = fadeAfter + fadeTime + 1
+                end
+            else
+                DruidRecentlyLeftCat = false
+            end
             -- restore to original MAXPOWER in case it was switched for classic energy
             NugEnergy.UNIT_MAXPOWER = NugEnergy.__UNIT_MAXPOWER
-            if (newPowerType == "ENERGY" or GetShapeshiftForm() == 0) and NugEnergyDB.energy then
+            if (newPowerType == "ENERGY" or DruidRecentlyLeftCat) and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
                 shouldBeFull = true
@@ -542,12 +555,22 @@ function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
 NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER_UPDATE
-function NugEnergy.UpdateEnergy(self)
+function NugEnergy.UpdateEnergy(self, elapsed)
     local p, p2, execute, shine, capped, insufficient = GetPower("player")
     local wasFull = isFull
     isFull = p == GetPowerMax("player", PowerTypeIndex)
     if isFull ~= wasFull then
         NugEnergy:UPDATE_STEALTH(nil, true)
+    end
+
+    if DruidLeftCatTimeout > 0 and elapsed then
+        DruidLeftCatTimeout = DruidLeftCatTimeout - elapsed
+        if DruidLeftCatTimeout <= 0 then
+            DruidRecentlyLeftCat = false
+            PowerFilter = nil
+            self:UNIT_DISPLAYPOWER()
+        end
+
     end
 
     p2 = p2 or p
@@ -642,7 +665,6 @@ function NugEnergy.UNIT_MAXPOWER(self)
 end
 NugEnergy.__UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
 
-local fadeTime = 1
 local fader = CreateFrame("Frame", nil, NugEnergy)
 NugEnergy.fader = fader
 local HideTimer = function(self, time)
@@ -684,7 +706,7 @@ end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     local inCombat = UnitAffectingCombat("player")
-    local isShiftedToHumanFormInClassic = (isClassic and class=="DRUID" and GetShapeshiftForm() == 0)
+    local isShiftedToHumanFormInClassic = (isClassic and DruidRecentlyLeftCat)
     if ((inCombat and not isShiftedToHumanFormInClassic) or
         ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
         ForcedToShow)
