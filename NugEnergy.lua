@@ -3,12 +3,12 @@ local addonName, ns = ...
 local textoutline = false
 local spenderFeedback = true
 local doFadeOut = true
-local fadeAfter = 3
+local fadeAfter = 5
 local onlyText = false
 local shouldBeFull = false
 local isFull = true
 local isVertical
-local isClassic = select(4,GetBuildInfo()) <= 19999
+local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 local GetSpecialization = isClassic and function() end or _G.GetSpecialization
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
@@ -67,11 +67,11 @@ local defaults = {
     marks = {},
     rage = true,
     energy = true,
-
     -- powerTypeColors = true,
     -- focusColor = true
 
     hideText = false,
+    enableClassicTicker = true,
 
     width = 100,
     height = 30,
@@ -318,7 +318,7 @@ function NugEnergy.Initialize(self)
             shouldBeFull = false
             -- restore to original MAXPOWER in case it was switched for classic energy
             NugEnergy.UNIT_MAXPOWER = NugEnergy.__UNIT_MAXPOWER
-            if newPowerType == "ENERGY" and NugEnergyDB.energy then
+            if (newPowerType == "ENERGY" or GetShapeshiftForm() == 0) and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
                 shouldBeFull = true
@@ -328,7 +328,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                if isClassic then
+                if isClassic and NugEnergyDB.enableClassicTicker then
                     GetPower = ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
                     ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
@@ -404,7 +404,7 @@ NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER_UPDATE
 function NugEnergy.UpdateEnergy(self)
     local p, p2, execute, shine, capped, insufficient = GetPower("player")
     local wasFull = isFull
-    isFull = p == GetPowerMax("player")
+    isFull = p == GetPowerMax("player", PowerTypeIndex)
     if isFull ~= wasFull then
         NugEnergy:UPDATE_STEALTH(nil, true)
     end
@@ -497,7 +497,7 @@ end
 
 
 function NugEnergy.UNIT_MAXPOWER(self)
-    self:SetMinMaxValues(0,GetPowerMax("player"))
+    self:SetMinMaxValues(0,GetPowerMax("player", PowerTypeIndex))
     if not self.marks then return end
     for _, mark in pairs(self.marks) do
         mark:Update()
@@ -546,7 +546,9 @@ function NugEnergy:StopHiding()
 end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
-    if (UnitAffectingCombat("player") or
+    local inCombat = UnitAffectingCombat("player")
+    local isShiftedToHumanFormInClassic = (isClassic and class=="DRUID" and GetShapeshiftForm() == 0)
+    if ((inCombat and not isShiftedToHumanFormInClassic) or
         ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
         ForcedToShow)
         and PowerFilter
