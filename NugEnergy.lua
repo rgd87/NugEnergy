@@ -45,6 +45,7 @@ local GetPowerMax = UnitPowerMax
 local execute = false
 local execute_range = nil
 
+local tickerEnabled
 local twEnabled
 local twEnabledCappedOnly
 local twStart
@@ -135,6 +136,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     isVertical = NugEnergyDB.isVertical
 
     twEnabled = NugEnergyDB.twEnabled
+    tickerEnabled = NugEnergyDB.enableClassicTicker
     twEnabledCappedOnly = NugEnergyDB.twEnabledCappedOnly
     twStart = NugEnergyDB.twStart
     twLength = NugEnergyDB.twLength
@@ -436,7 +438,7 @@ function NugEnergy.UpdateEnergy(self)
         -- self.spentBar:SetColor(unpack(c))
         self:SetColor(unpack(c))
 
-        if twEnabled and (not twEnabledCappedOnly or capped) and GetTickProgress() > twStart then
+        if twEnabled and tickerEnabled and (not twEnabledCappedOnly or capped) and GetTickProgress() > twStart then
             ClassicTickerColorUpdate(self, GetTickProgress(), c)
         end
 
@@ -1422,6 +1424,17 @@ function NugEnergy:CreateGUI()
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
                         },
+                    },
+                    energyTicker = {
+                        name = "Energy Ticker",
+                        type = "toggle",
+                        order = 4.9,
+                        get = function(info) return NugEnergyDB.enableClassicTicker end,
+                        set = function(info, v)
+                            NugEnergyDB.enableClassicTicker = not NugEnergyDB.enableClassicTicker
+                            tickerEnabled = NugEnergyDB.enableClassicTicker
+                            NugEnergy:Initialize()
+                        end
                     },
                     twGroup = {
                         type = "group",
