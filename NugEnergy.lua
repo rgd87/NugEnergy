@@ -39,6 +39,7 @@ local UnitPower = UnitPower
 local math_modf = math.modf
 
 local PowerFilter
+local PowerTypeIndex
 local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
@@ -1050,7 +1051,7 @@ function NugEnergy.Create(self)
 
     self.glow = sag
     self.glowanim = sa1
-    self.glowtex = glow
+    -- self.glowtex = glow
 
 
 
@@ -1138,6 +1139,7 @@ function NugEnergy.Create(self)
     f:SetScript("OnDragStart",function(self) self:StartMoving() end)
     f:SetScript("OnDragStop",function(self)
         self:StopMovingOrSizing();
+        local _
         _,_, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y = self:GetPoint(1)
     end)
 end
