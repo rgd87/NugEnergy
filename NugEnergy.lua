@@ -77,6 +77,7 @@ local defaults = {
 
     hideText = false,
     enableClassicTicker = true,
+    spenderFeedback = not isClassic,
 
     width = 100,
     height = 30,
@@ -133,7 +134,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
         self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
     end
 
-    isVertical = NugEnergyDB.isVertical
+    NugEnergy:UpdateUpvalues()
 
     NugEnergy:Initialize()
 
@@ -155,6 +156,10 @@ function NugEnergy.PLAYER_LOGOUT(self, event)
     RemoveDefaults( NugEnergyDB, defaults)
 end
 
+function NugEnergy:UpdateUpvalues()
+    isVertical = NugEnergyDB.isVertical
+    spenderFeedback = NugEnergyDB.spenderFeedback
+end
 
 
 local function FindAura(unit, spellID, filter)
@@ -1473,6 +1478,17 @@ function NugEnergy:CreateGUI()
                                 max = 1,
                                 step = 0.05,
                                 order = 1,
+                            },
+                            spenderFeedback = {
+                                name = "Spent / Ticker Fade",
+                                desc = "Fade effect after each tick or when spending",
+                                type = "toggle",
+                                order = 1,
+                                get = function(info) return NugEnergyDB.spenderFeedback end,
+                                set = function(info, v)
+                                    NugEnergyDB.spenderFeedback = not NugEnergyDB.spenderFeedback
+                                    NugEnergy:UpdateUpvalues()
+                                end
                             },
                         },
                     },
