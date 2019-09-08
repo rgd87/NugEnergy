@@ -39,6 +39,7 @@ local UnitPower = UnitPower
 local math_modf = math.modf
 
 local PowerFilter
+local PowerTypeIndex
 local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
@@ -76,6 +77,7 @@ local defaults = {
 
     hideText = false,
     enableClassicTicker = true,
+    spenderFeedback = not isClassic,
 
     width = 100,
     height = 30,
@@ -136,7 +138,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB_Character = NugEnergyDB_Character or {}
     NugEnergyDB_Character.marks = NugEnergyDB_Character.marks or { [0] = {}, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
 
-    isVertical = NugEnergyDB.isVertical
+    NugEnergy:UpdateUpvalues()
 
     twEnabled = NugEnergyDB.twEnabled
     tickerEnabled = NugEnergyDB.enableClassicTicker
@@ -165,6 +167,10 @@ function NugEnergy.PLAYER_LOGOUT(self, event)
     RemoveDefaults( NugEnergyDB, defaults)
 end
 
+function NugEnergy:UpdateUpvalues()
+    isVertical = NugEnergyDB.isVertical
+    spenderFeedback = NugEnergyDB.spenderFeedback
+end
 
 
 local function FindAura(unit, spellID, filter)
@@ -914,7 +920,7 @@ function NugEnergy.Create(self)
 
     self.glow = sag
     self.glowanim = sa1
-    self.glowtex = glow
+    -- self.glowtex = glow
 
 
 
@@ -1002,6 +1008,7 @@ function NugEnergy.Create(self)
     f:SetScript("OnDragStart",function(self) self:StartMoving() end)
     f:SetScript("OnDragStop",function(self)
         self:StopMovingOrSizing();
+        local _
         _,_, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y = self:GetPoint(1)
     end)
 end
@@ -1313,6 +1320,17 @@ function NugEnergy:CreateGUI()
                                 max = 1,
                                 step = 0.05,
                                 order = 1,
+                            },
+                            spenderFeedback = {
+                                name = "Spent / Ticker Fade",
+                                desc = "Fade effect after each tick or when spending",
+                                type = "toggle",
+                                order = 1,
+                                get = function(info) return NugEnergyDB.spenderFeedback end,
+                                set = function(info, v)
+                                    NugEnergyDB.spenderFeedback = not NugEnergyDB.spenderFeedback
+                                    NugEnergy:UpdateUpvalues()
+                                end
                             },
                         },
                     },
