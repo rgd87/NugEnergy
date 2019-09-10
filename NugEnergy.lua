@@ -1448,6 +1448,20 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.rage end,
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
+                            druidMana = {
+                                name = "Druid Mana",
+                                type = "toggle",
+                                order = 3,
+                                get = function(info) return NugEnergyDB.manaDruid end,
+                                set = function(info, v) NugEnergyDB.manaDruid = not NugEnergyDB.manaDruid end
+                            },
+                            mana = {
+                                name = "Priest Mana",
+                                type = "toggle",
+                                order = 4,
+                                get = function(info) return NugEnergyDB.mana end,
+                                set = function(info, v) NugEnergyDB.mana = not NugEnergyDB.mana end
+                            },
                         },
                     },
                     energyTicker = {
