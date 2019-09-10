@@ -197,7 +197,7 @@ end
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
-local ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
+local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
     return function(unit)
         local p = GetTime() - lastEnergyTickTime
         local p2 = UnitPower(unit, PowerTypeIndex)
@@ -217,7 +217,7 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
-local ClassicRogue_UNIT_MAXPOWER = function(self)
+local UNIT_MAXPOWER_ClassicTicker = function(self)
     self:SetMinMaxValues(0, 2)
 end
 
@@ -257,11 +257,12 @@ function NugEnergy.Initialize(self)
         end
 
         if isClassic and NugEnergyDB.enableClassicTicker then
-            GetPower = ClassicRogueTicker(nil, 19, 0, false)
+            GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
             ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
-            NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
+            NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
             self:RegisterEvent("SPELLS_CHANGED")
             self:SPELLS_CHANGED()
         end
@@ -330,7 +331,7 @@ function NugEnergy.Initialize(self)
                 DruidRecentlyLeftCat = false
             end
             -- restore to original MAXPOWER in case it was switched for classic energy
-            NugEnergy.UNIT_MAXPOWER = NugEnergy.__UNIT_MAXPOWER
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
             if (newPowerType == "ENERGY" or DruidRecentlyLeftCat) and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
@@ -342,8 +343,8 @@ function NugEnergy.Initialize(self)
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
                 if isClassic and NugEnergyDB.enableClassicTicker then
-                    GetPower = ClassicRogueTicker(nil, 19, 0, false)
-                    NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
+                    GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
+                    NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
                     ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
@@ -669,7 +670,7 @@ function NugEnergy.UNIT_MAXPOWER(self)
         mark:Update()
     end
 end
-NugEnergy.__UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
+NugEnergy.NORMAL_UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
 
 local fader = CreateFrame("Frame", nil, NugEnergy)
 NugEnergy.fader = fader
