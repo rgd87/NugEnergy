@@ -283,10 +283,12 @@ function NugEnergy.Initialize(self)
         self.initialized = true
     end
 
+    twEnabled = false
 
     if class == "ROGUE" and NugEnergyDB.energy then
         PowerFilter = "ENERGY"
         PowerTypeIndex = Enum.PowerType.Energy
+        twEnabled = NugEnergyDB.twEnabled
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
         self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -327,12 +329,14 @@ function NugEnergy.Initialize(self)
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             shouldBeFull = false
+            twEnabled = false
 
             -- restore to original MAXPOWER in case it was switched for classic energy
             NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
+                twEnabled = NugEnergyDB.twEnabled
                 shouldBeFull = true
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
