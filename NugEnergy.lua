@@ -69,6 +69,8 @@ local defaults = {
     marks = {},
     rage = true,
     energy = true,
+    mana = false,
+    manaDruid = true,
     -- powerTypeColors = true,
     -- focusColor = true
 
@@ -363,6 +365,8 @@ function NugEnergy.Initialize(self)
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
+            elseif newPowerType =="MANA" and isClassic and NugEnergyDB.manaDruid then
+                self:SwitchToMana()
             else
                 PowerFilter = nil
                 PowerTypeIndex = nil
@@ -381,6 +385,9 @@ function NugEnergy.Initialize(self)
         self.PLAYER_ENTERING_WORLD = function(self)
             C_Timer.After(2, function() self:UNIT_DISPLAYPOWER() end)
         end
+
+    elseif class == "PRIEST" and isClassic and NugEnergyDB.mana then
+        self:SwitchToMana()
 
 
     elseif class == "WARRIOR" and NugEnergyDB.rage then
@@ -1533,4 +1540,112 @@ function NugEnergy:CreateGUI()
     local panelFrame = AceConfigDialog:AddToBlizOptions("NugEnergyOptions", "NugEnergy")
 
     return panelFrame
+end
+
+
+local lastManaDropTime = 0
+local GetPower_ClassicMana5SR = function(callback)
+    return function(unit)
+        local p = GetTime() - lastManaDropTime
+        local mana = UnitPower(unit, PowerTypeIndex)
+        local pmax = UnitPowerMax(unit, PowerTypeIndex)
+        local p2 = string.format("%d", mana/pmax*100)
+        local shine = nil
+        local capped = nil
+        local insufficient = nil
+        if p >= 5 and callback then
+            callback()
+        end
+        -- local p2 = throttleText and math_modf(p2/5)*5 or p2
+        return p, p2, execute, shine, capped, true
+    end
+end
+local UNIT_MAXPOWER_ClassicMana5SR = function(self)
+    self:SetMinMaxValues(0, 5)
+end
+
+local GetPower_ClassicManaTicker = function(shineZone, cappedZone, minLimit, throttleText)
+    return function(unit)
+        local p = GetTime() - lastEnergyTickTime
+        local mana = UnitPower(unit, PowerTypeIndex)
+        local pmax = UnitPowerMax(unit, PowerTypeIndex)
+        local p2 = string.format("%d", mana/pmax*100)
+        local shine = shineZone and (p2 >= pmax-shineZone)
+        local capped = mana >= pmax-cappedZone
+        -- local p2 = throttleText and math_modf(p2/5)*5 or p2
+        return p, p2, execute, shine, capped, (minLimit and mana < minLimit)
+    end
+end
+
+function NugEnergy:SwitchToMana()
+            PowerFilter = "MANA"
+            PowerTypeIndex = Enum.PowerType.Mana
+            lastEnergyValue = 0
+            shouldBeFull = true
+            twEnabled = false
+
+            local switchToManaCallback = function()
+                if NugEnergyDB.enableClassicTicker then
+                    GetPower = GetPower_ClassicManaTicker(nil, 0, 0, false)
+                    NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
+                else
+                    NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
+                    GetPower = RageBarGetPower(nil, 0, nil, true)
+                end
+                NugEnergy:UNIT_MAXPOWER()
+            end
+
+            self.FSRWatcher = self.FSRWatcher or self:Make5SRWatcher(function()
+                GetPower = GetPower_ClassicMana5SR(switchToManaCallback)
+                NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicMana5SR
+                NugEnergy:UNIT_MAXPOWER()
+            end)
+            self.FSRWatcher:Enable()
+
+            self:SetScript("OnUpdate",self.UpdateEnergy)
+            ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+            switchToManaCallback()
+
+            self.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
+            self:UNIT_MAXPOWER()
+end
+
+function NugEnergy:Make5SRWatcher(callback)
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetScript("OnEvent", function(self, event, ...)
+        return self[event](self, event, ...)
+    end)
+
+
+    local prevMana = UnitPower("player", 0)
+    f.UNIT_SPELLCAST_SUCCEEDED = function(self, event, unit)
+        if unit == "player" then
+            local now = GetTime()
+            if now - lastManaDropTime < 0.01 then
+                callback()
+            end
+        end
+    end
+    f.UNIT_POWER_UPDATE = function(self, event, unit, ptype)
+        if ptype == "MANA" then
+            local mana = UnitPower("player", 0)
+            if mana < prevMana then
+                lastManaDropTime = GetTime()
+            end
+            prevMana = mana
+        end
+    end
+
+    f.Enable = function(self)
+        self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        self:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+    end
+    f.Disable = function(self)
+        self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        self:UnregisterUnitEvent("UNIT_POWER_UPDATE", "player")
+    end
+
+    f:Enable()
+
+    return f
 end
