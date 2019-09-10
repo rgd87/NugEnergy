@@ -54,9 +54,6 @@ local twStart
 local twLength
 local twCrossfade
 
-local DruidRecentlyLeftCat = false
-local DruidLeftCatTimeout = 0
-
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
 local Enum_PowerType_Energy = EPT.Energy
@@ -215,7 +212,7 @@ end
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
-local ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
+local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
     return function(unit)
         local p = GetTime() - lastEnergyTickTime
         local p2 = UnitPower(unit, PowerTypeIndex)
@@ -267,7 +264,7 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
-local ClassicRogue_UNIT_MAXPOWER = function(self)
+local UNIT_MAXPOWER_ClassicTicker = function(self)
     self:SetMinMaxValues(0, 2)
 end
 
@@ -307,11 +304,12 @@ function NugEnergy.Initialize(self)
         end
 
         if isClassic and NugEnergyDB.enableClassicTicker then
-            GetPower = ClassicRogueTicker(nil, 19, 0, false)
+            GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
             ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
-            NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
+            NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
             self:RegisterEvent("SPELLS_CHANGED")
             self:SPELLS_CHANGED()
         end
@@ -328,17 +326,9 @@ function NugEnergy.Initialize(self)
             local newPowerType = select(2,UnitPowerType("player"))
             shouldBeFull = false
 
-            if newPowerType == "MANA" then
-                if  PowerFilter == "ENERGY" and not DruidRecentlyLeftCat then
-                    DruidRecentlyLeftCat = true
-                    DruidLeftCatTimeout = fadeAfter + fadeTime + 1
-                end
-            else
-                DruidRecentlyLeftCat = false
-            end
             -- restore to original MAXPOWER in case it was switched for classic energy
-            NugEnergy.UNIT_MAXPOWER = NugEnergy.__UNIT_MAXPOWER
-            if (newPowerType == "ENERGY" or DruidRecentlyLeftCat) and NugEnergyDB.energy then
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
+            if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
                 shouldBeFull = true
@@ -349,8 +339,8 @@ function NugEnergy.Initialize(self)
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
                 if isClassic and NugEnergyDB.enableClassicTicker then
-                    GetPower = ClassicRogueTicker(nil, 19, 0, false)
-                    NugEnergy.UNIT_MAXPOWER = ClassicRogue_UNIT_MAXPOWER
+                    GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
+                    NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
                     ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
@@ -427,16 +417,6 @@ function NugEnergy.UpdateEnergy(self, elapsed)
     isFull = p == GetPowerMax("player", PowerTypeIndex)
     if isFull ~= wasFull then
         NugEnergy:UPDATE_STEALTH(nil, true)
-    end
-
-    if DruidLeftCatTimeout > 0 and elapsed then
-        DruidLeftCatTimeout = DruidLeftCatTimeout - elapsed
-        if DruidLeftCatTimeout <= 0 then
-            DruidRecentlyLeftCat = false
-            PowerFilter = nil
-            self:UNIT_DISPLAYPOWER()
-        end
-
     end
 
     p2 = p2 or p
@@ -533,7 +513,7 @@ function NugEnergy.UNIT_MAXPOWER(self)
         mark:Update()
     end
 end
-NugEnergy.__UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
+NugEnergy.NORMAL_UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
 
 local fader = CreateFrame("Frame", nil, NugEnergy)
 NugEnergy.fader = fader
@@ -576,8 +556,7 @@ end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     local inCombat = UnitAffectingCombat("player")
-    local isShiftedToHumanFormInClassic = (isClassic and DruidRecentlyLeftCat)
-    if ((inCombat and not isShiftedToHumanFormInClassic) or
+    if (inCombat or
         ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
         ForcedToShow)
         and PowerFilter
