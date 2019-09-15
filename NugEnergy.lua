@@ -270,6 +270,19 @@ local UNIT_MAXPOWER_ClassicTicker = function(self)
     self:SetMinMaxValues(0, 2)
 end
 
+--[[
+function NugEnergy:DRUID(EnergyType, EnergyIndex)
+    UnitPowerType = function()
+        return EnergyIndex, EnergyType
+    end
+    UnitClass = function()
+        return "Druid", "DRUID"
+    end
+    self:Initialize()
+    self:UNIT_DISPLAYPOWER()
+end
+]]
+
 function NugEnergy.Initialize(self)
     self:RegisterEvent("UNIT_POWER_UPDATE")
     self:RegisterEvent("UNIT_MAXPOWER")
@@ -1567,7 +1580,10 @@ local GetPower_ClassicMana5SR = function(callback)
         local p = GetTime() - lastManaDropTime
         local mana = UnitPower(unit, PowerTypeIndex)
         local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local p2 = string.format("%d", mana/pmax*100)
+        local p2
+        if pmax > 0  then
+            p2 = string.format("%d", mana/pmax*100)
+        end
         local shine = nil
         local capped = nil
         local insufficient = nil
@@ -1587,7 +1603,10 @@ local GetPower_ClassicManaTicker = function(shineZone, cappedZone, minLimit, thr
         local p = GetTime() - lastEnergyTickTime
         local mana = UnitPower(unit, PowerTypeIndex)
         local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local p2 = string.format("%d", mana/pmax*100)
+        local p2
+        if pmax > 0  then
+            p2 = string.format("%d", mana/pmax*100)
+        end
         local shine = shineZone and (p2 >= pmax-shineZone)
         local capped = mana >= pmax-cappedZone
         -- local p2 = throttleText and math_modf(p2/5)*5 or p2
@@ -1614,9 +1633,11 @@ function NugEnergy:SwitchToMana()
             end
 
             self.FSRWatcher = self.FSRWatcher or self:Make5SRWatcher(function()
-                GetPower = GetPower_ClassicMana5SR(switchToManaCallback)
-                NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicMana5SR
-                NugEnergy:UNIT_MAXPOWER()
+                if PowerFilter == "MANA" then
+                    GetPower = GetPower_ClassicMana5SR(switchToManaCallback)
+                    NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicMana5SR
+                    NugEnergy:UNIT_MAXPOWER()
+                end
             end)
             self.FSRWatcher:Enable()
 
