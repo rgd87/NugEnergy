@@ -70,6 +70,7 @@ local defaults = {
     rage = true,
     energy = true,
     mana = false,
+    manaPriest = false,
     manaDruid = true,
     -- powerTypeColors = true,
     -- focusColor = true
@@ -403,10 +404,6 @@ function NugEnergy.Initialize(self)
             C_Timer.After(2, function() self:UNIT_DISPLAYPOWER() end)
         end
 
-    elseif class == "PRIEST" and isClassic and NugEnergyDB.mana then
-        self:SwitchToMana()
-
-
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
         PowerTypeIndex = Enum.PowerType.Rage
@@ -417,6 +414,13 @@ function NugEnergy.Initialize(self)
             self:RegisterUnitEvent("UNIT_HEALTH", "target")
             self:RegisterEvent("PLAYER_TARGET_CHANGED")
         end
+
+    elseif class == "PRIEST" and isClassic and (NugEnergyDB.manaPriest or NugEnergyDB.mana) then
+        self:SwitchToMana()
+
+    elseif NugEnergyDB.mana then
+        self:SwitchToMana()
+
     else
         self:UnregisterAllEvents()
         self:SetScript("OnUpdate", nil)
@@ -1472,10 +1476,18 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.manaDruid end,
                                 set = function(info, v) NugEnergyDB.manaDruid = not NugEnergyDB.manaDruid end
                             },
-                            mana = {
+                            manaPriest = {
                                 name = "Priest Mana",
                                 type = "toggle",
                                 order = 4,
+                                get = function(info) return NugEnergyDB.manaPriest end,
+                                set = function(info, v) NugEnergyDB.manaPriest = not NugEnergyDB.manaPriest end
+                            },
+                            mana = {
+                                name = "Mana all classes",
+                                desc = "Toggle for all other classes",
+                                type = "toggle",
+                                order = 5,
                                 get = function(info) return NugEnergyDB.mana end,
                                 set = function(info, v) NugEnergyDB.mana = not NugEnergyDB.mana end
                             },
