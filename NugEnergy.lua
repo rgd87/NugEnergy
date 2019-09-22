@@ -86,6 +86,9 @@ local defaults = {
     textureName = "Glamour7",
     fontName = "Emblem",
     fontSize = 25,
+    textAlign = "END",
+    textOffsetX = 0,
+    textOffsetY = 0,
     textColor = {1,1,1, isClassic and 0.8 or 0.3},
     outOfCombatAlpha = 0,
     isVertical = false,
@@ -752,10 +755,20 @@ function NugEnergy:Resize()
         f.spark:SetTexCoord(1,1,0,1,1,0,0,0)
 
         text:ClearAllPoints()
-        text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
-        text:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0,0)
+        local textAlign = NugEnergyDB.textAlign
+        if textAlign == "END" then
+            text:SetPoint("TOP", f, "TOP", 0+NugEnergyDB.textOffsetX, -5+NugEnergyDB.textOffsetY)
+            text:SetJustifyV("TOP")
+        elseif textAlign == "CENTER" then
+            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
+            text:SetJustifyV("CENTER")
+        elseif textAlign == "START" then
+            text:SetPoint("BOTTOM", f, "BOTTOM", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
+            text:SetJustifyV("BOTTOM")
+        end
+
         text:SetJustifyH("CENTER")
-        text:SetJustifyV("TOP")
+
     else
         f:SetWidth(width)
         f:SetHeight(height)
@@ -768,9 +781,18 @@ function NugEnergy:Resize()
         f.spark:SetHeight(height)
 
         text:ClearAllPoints()
-        text:SetPoint("LEFT",f,"LEFT",0, -2)
-        text:SetPoint("RIGHT",f,"RIGHT",-7, -2)
-        text:SetJustifyH("RIGHT")
+        local textAlign = NugEnergyDB.textAlign
+        if textAlign == "END" then
+            text:SetPoint("RIGHT", f, "RIGHT", -7+NugEnergyDB.textOffsetX, -2+NugEnergyDB.textOffsetY)
+            text:SetJustifyH("RIGHT")
+        elseif textAlign == "CENTER" then
+            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergyDB.textOffsetX, -2+NugEnergyDB.textOffsetY)
+            text:SetJustifyH("CENTER")
+        elseif textAlign == "START" then
+            text:SetPoint("LEFT", f, "LEFT", 7+NugEnergyDB.textOffsetX, -2+NugEnergyDB.textOffsetY)
+            text:SetJustifyH("LEFT")
+        end
+
         text:SetJustifyV("CENTER")
     end
 
@@ -1085,22 +1107,13 @@ function NugEnergy.Create(self)
     local font = getFont()
     local fontSize = NugEnergyDB.fontSize
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
-    if isVertical then
-        text:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -10)
-        text:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0,0)
-        text:SetJustifyH("CENTER")
-        text:SetJustifyV("TOP")
-    else
-        -- text:SetPoint("TOPLEFT",f,"TOPLEFT",0,0)
-        -- text:SetPoint("BOTTOMRIGHT",f,"BOTTOMRIGHT",-10,0)
-        text:SetPoint("LEFT",f,"LEFT",0, -2)
-        text:SetPoint("RIGHT",f,"RIGHT",-7, -2)
-        text:SetJustifyH("RIGHT")
-    end
+
     local r,g,b,a = unpack(NugEnergyDB.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
     f.text = text
+
+    NugEnergy:Resize()
 
     if NugEnergyDB.hideText then
         text:Hide()
@@ -1577,6 +1590,47 @@ function NugEnergy:CreateGUI()
                                     NugEnergyDB.hideText = not NugEnergyDB.hideText
                                     NugEnergy:ResizeText()
                                 end
+                            },
+                            textAlign = {
+                                name = "Text Align",
+                                type = 'select',
+                                order = 4,
+                                values = {
+                                    START = "START",
+                                    CENTER = "CENTER",
+                                    END = "END",
+                                },
+                                get = function(info) return NugEnergyDB.textAlign end,
+                                set = function(info, v)
+                                    NugEnergyDB.textAlign = v
+                                    NugEnergy:Resize()
+                                end,
+                            },
+                            textOffsetX = {
+                                name = "Text Offset X",
+                                type = "range",
+                                order = 5,
+                                get = function(info) return NugEnergyDB.textOffsetX end,
+                                set = function(info, v)
+                                    NugEnergyDB.textOffsetX = tonumber(v)
+                                    NugEnergy:Resize()
+                                end,
+                                min = -50,
+                                max = 50,
+                                step = 1,
+                            },
+                            textOffsetY = {
+                                name = "Text Offset Y",
+                                type = "range",
+                                order = 6,
+                                get = function(info) return NugEnergyDB.textOffsetY end,
+                                set = function(info, v)
+                                    NugEnergyDB.textOffsetY = tonumber(v)
+                                    NugEnergy:Resize()
+                                end,
+                                min = -50,
+                                max = 50,
+                                step = 1,
                             },
                         },
                     },
