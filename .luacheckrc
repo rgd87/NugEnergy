@@ -117,7 +117,7 @@ globals = {
     "GetShapeshiftForm",
 	"C_Timer",
 	"SlashCmdList",
-
+	"InterfaceOptionsFrame_OpenToCategory",
 
 
 }

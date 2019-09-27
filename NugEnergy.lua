@@ -1150,6 +1150,13 @@ local ParseOpts = function(str)
 end
 
 NugEnergy.Commands = {
+    ["gui"] = function(v)
+        if not NugEnergy.optionsPanel then
+            NugEnergy.optionsPanel = NugEnergy:CreateGUI()
+        end
+        InterfaceOptionsFrame_OpenToCategory("NugEnergy")
+        InterfaceOptionsFrame_OpenToCategory("NugEnergy")
+    end,
     ["unlock"] = function(v)
         NugEnergy:EnableMouse(true)
         ForcedToShow = true
@@ -1231,6 +1238,7 @@ NugEnergy.Commands = {
 }
 
 local helpMessage = {
+    "|cff00ffbb/nen gui|r",
     "|cff00ff00/nen lock|r",
     "|cff00ff00/nen unlock|r",
     "|cff00ff00/nen reset|r",
