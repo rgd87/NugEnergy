@@ -17,3 +17,5 @@ Libs\LibSharedMedia-3.0\lib.xml
 Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 
 NugEnergy.lua
+
+Locales\ruRU.lua

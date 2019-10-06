@@ -32,6 +32,15 @@ local getFont = function() return LSM:Fetch("font", NugEnergyDB.fontName) end
 -- local getStatusbar = function() return [[Interface\AddOns\NugEnergy\statusbar.tga]] end
 -- local getFont = function() return [[Interface\AddOns\NugEnergy\Emblem.ttf]] end
 
+local L = setmetatable({}, {
+    __index = function(t, k)
+        -- print(string.format('L["%s"] = ""',k:gsub("\n","\\n")));
+        return k
+    end,
+    __call = function(t,k) return t[k] end,
+})
+NugEnergy.L = L
+
 
 NugEnergy:RegisterEvent("PLAYER_LOGIN")
 NugEnergy:RegisterEvent("PLAYER_LOGOUT")
@@ -1225,21 +1234,21 @@ function NugEnergy:CreateGUI()
         order = 1,
         args = {
             unlock = {
-                name = "Unlock",
+                name = L"Unlock",
                 type = "execute",
                 desc = "Unlock anchor for dragging",
                 func = function() NugEnergy.Commands.unlock() end,
                 order = 1,
             },
             lock = {
-                name = "Lock",
+                name = L"Lock",
                 type = "execute",
                 desc = "Lock anchor",
                 func = function() NugEnergy.Commands.lock() end,
                 order = 2,
             },
             resetToDefault = {
-                name = "Restore Defaults",
+                name = L"Restore Defaults",
                 type = 'execute',
                 func = function()
                     NugEnergyDB = {}
@@ -1261,7 +1270,7 @@ function NugEnergy:CreateGUI()
                         order = 1,
                         args = {
                             classColor = {
-                                name = "Normal Color",
+                                name = L"Normal Color",
                                 type = 'color',
                                 get = function(info)
                                     local r,g,b = unpack(NugEnergyDB.normalColor)
@@ -1273,7 +1282,8 @@ function NugEnergy:CreateGUI()
                                 order = 1,
                             },
                             customcolor2 = {
-                                name = "Alt Color",
+                                name = L"Alt Color",
+                                desc = L"(Execute-phase)",
                                 type = 'color',
                                 order = 2,
                                 get = function(info)
@@ -1285,7 +1295,7 @@ function NugEnergy:CreateGUI()
                                 end,
                             },
                             customcolor3 = {
-                                name = "Max Color",
+                                name = L"Max Color",
                                 type = 'color',
                                 order = 3,
                                 get = function(info)
@@ -1297,7 +1307,7 @@ function NugEnergy:CreateGUI()
                                 end,
                             },
                             customcolor4 = {
-                                name = "Insufficient Color",
+                                name = L"Insufficient Color",
                                 type = 'color',
                                 order = 4,
                                 get = function(info)
@@ -1309,7 +1319,7 @@ function NugEnergy:CreateGUI()
                                 end,
                             },
                             textColor = {
-                                name = "Text Color & Alpha",
+                                name = L"Text Color & Alpha",
                                 type = 'color',
                                 hasAlpha = true,
                                 order = 5,
@@ -1343,7 +1353,7 @@ function NugEnergy:CreateGUI()
                         order = 1.5,
                         args = {
                             font = {
-                                name = "Out of Combat Alpha",
+                                name = L"Out of Combat Alpha",
                                 desc = "0 = disabled",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.outOfCombatAlpha end,
@@ -1358,8 +1368,8 @@ function NugEnergy:CreateGUI()
                                 order = 1,
                             },
                             spenderFeedback = {
-                                name = "Spent / Ticker Fade",
-                                desc = "Fade effect after each tick or when spending",
+                                name = L"Spent / Ticker Fade",
+                                desc = L"Fade effect after each tick or when spending",
                                 type = "toggle",
                                 order = 1,
                                 get = function(info) return NugEnergyDB.spenderFeedback end,
@@ -1377,9 +1387,8 @@ function NugEnergy:CreateGUI()
                         args = {
                             texture = {
                                 type = "select",
-                                name = "Texture",
+                                name = L"Texture",
                                 order = 10,
-                                desc = "Set the statusbar texture.",
                                 get = function(info) return NugEnergyDB.textureName end,
                                 set = function(info, value)
                                     NugEnergyDB.textureName = value
@@ -1389,7 +1398,7 @@ function NugEnergy:CreateGUI()
                                 dialogControl = "LSM30_Statusbar",
                             },
                             width = {
-                                name = "Width",
+                                name = L"Width",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.width end,
                                 set = function(info, v)
@@ -1402,7 +1411,7 @@ function NugEnergy:CreateGUI()
                                 order = 7,
                             },
                             height = {
-                                name = "Height",
+                                name = L"Height",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.height end,
                                 set = function(info, v)
@@ -1430,7 +1439,7 @@ function NugEnergy:CreateGUI()
                         },
                     },
                     isVertical = {
-                        name = "Vertical",
+                        name = L"Vertical",
                         type = "toggle",
                         order = 2.5,
                         get = function(info) return NugEnergyDB.isVertical end,
@@ -1443,7 +1452,7 @@ function NugEnergy:CreateGUI()
                         args = {
                             font = {
                                 type = "select",
-                                name = "Font",
+                                name = L"Font",
                                 order = 1,
                                 desc = "Set the statusbar texture.",
                                 get = function(info) return NugEnergyDB.fontName end,
@@ -1455,7 +1464,7 @@ function NugEnergy:CreateGUI()
                                 dialogControl = "LSM30_Font",
                             },
                             fontSize = {
-                                name = "Font Size",
+                                name = L"Font Size",
                                 type = "range",
                                 order = 2,
                                 get = function(info) return NugEnergyDB.fontSize end,
@@ -1468,7 +1477,7 @@ function NugEnergy:CreateGUI()
                                 step = 1,
                             },
                             hideText = {
-                                name = "Hide Text",
+                                name = L"Hide Text",
                                 type = "toggle",
                                 order = 3,
                                 get = function(info) return NugEnergyDB.hideText end,
@@ -1478,13 +1487,13 @@ function NugEnergy:CreateGUI()
                                 end
                             },
                             textAlign = {
-                                name = "Text Align",
+                                name = L"Text Align",
                                 type = 'select',
                                 order = 4,
                                 values = {
-                                    START = "START",
-                                    CENTER = "CENTER",
-                                    END = "END",
+                                    START = L"START",
+                                    CENTER = L"CENTER",
+                                    END = L"END",
                                 },
                                 get = function(info) return NugEnergyDB.textAlign end,
                                 set = function(info, v)
@@ -1493,7 +1502,7 @@ function NugEnergy:CreateGUI()
                                 end,
                             },
                             textOffsetX = {
-                                name = "Text Offset X",
+                                name = L"Text Offset X",
                                 type = "range",
                                 order = 5,
                                 get = function(info) return NugEnergyDB.textOffsetX end,
@@ -1506,7 +1515,7 @@ function NugEnergy:CreateGUI()
                                 step = 1,
                             },
                             textOffsetY = {
-                                name = "Text Offset Y",
+                                name = L"Text Offset Y",
                                 type = "range",
                                 order = 6,
                                 get = function(info) return NugEnergyDB.textOffsetY end,
@@ -1526,14 +1535,14 @@ function NugEnergy:CreateGUI()
                         order = 4,
                         args = {
                             energy = {
-                                name = "Energy",
+                                name = L"Energy",
                                 type = "toggle",
                                 order = 1,
                                 get = function(info) return NugEnergyDB.energy end,
                                 set = function(info, v) NugEnergy.Commands.energy() end
                             },
                             rage = {
-                                name = "Rage",
+                                name = L"Rage",
                                 type = "toggle",
                                 order = 2,
                                 get = function(info) return NugEnergyDB.rage end,
