@@ -1333,7 +1333,7 @@ function NugEnergy:CreateGUI()
                                 end,
                             },
                             twColor = {
-                                name = "Tick Window Color",
+                                name = L"Tick Window Color",
                                 type = 'color',
                                 order = 6,
                                 get = function(info)
@@ -1549,21 +1549,21 @@ function NugEnergy:CreateGUI()
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
                             druidMana = {
-                                name = "Druid Mana",
+                                name = L"Druid Mana",
                                 type = "toggle",
                                 order = 3,
                                 get = function(info) return NugEnergyDB.manaDruid end,
                                 set = function(info, v) NugEnergyDB.manaDruid = not NugEnergyDB.manaDruid end
                             },
                             manaPriest = {
-                                name = "Priest Mana",
+                                name = L"Priest Mana",
                                 type = "toggle",
                                 order = 4,
                                 get = function(info) return NugEnergyDB.manaPriest end,
                                 set = function(info, v) NugEnergyDB.manaPriest = not NugEnergyDB.manaPriest end
                             },
                             mana = {
-                                name = "Mana all classes",
+                                name = L"Mana all classes",
                                 desc = "Toggle for all other classes",
                                 type = "toggle",
                                 order = 5,
@@ -1573,7 +1573,7 @@ function NugEnergy:CreateGUI()
                         },
                     },
                     energyTicker = {
-                        name = "Energy Ticker",
+                        name = L"Energy Ticker",
                         type = "toggle",
                         order = 4.9,
                         get = function(info) return NugEnergyDB.enableClassicTicker end,
@@ -1585,11 +1585,11 @@ function NugEnergy:CreateGUI()
                     },
                     twGroup = {
                         type = "group",
-                        name = "Tick Window",
+                        name = L"Tick Window",
                         order = 5,
                         args = {
                             twEnabled = {
-                                name = "Enabled",
+                                name = L"Enabled",
                                 type = "toggle",
                                 order = 1,
                                 get = function(info) return NugEnergyDB.twEnabled end,
@@ -1599,7 +1599,7 @@ function NugEnergy:CreateGUI()
                                 end
                             },
                             twEnabledCappedOnly = {
-                                name = "Only If Capping",
+                                name = L"Only If Capping",
                                 type = "toggle",
                                 width = "double",
                                 order = 2,
@@ -1610,7 +1610,7 @@ function NugEnergy:CreateGUI()
                                 end
                             },
                             twStart = {
-                                name = "Start Time",
+                                name = L"Start Time",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.twStart end,
                                 set = function(info, v)
@@ -1623,7 +1623,7 @@ function NugEnergy:CreateGUI()
                                 order = 3,
                             },
                             twLength = {
-                                name = "Window Length",
+                                name = L"Window Length",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.twLength end,
                                 set = function(info, v)
@@ -1636,7 +1636,7 @@ function NugEnergy:CreateGUI()
                                 order = 4,
                             },
                             twCrossfade = {
-                                name = "Crossfade Length",
+                                name = L"Crossfade Length",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.twCrossfade end,
                                 set = function(info, v)
