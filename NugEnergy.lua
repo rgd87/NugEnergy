@@ -73,6 +73,7 @@ local defaults = {
     -- focusColor = true
 
     hideText = false,
+    hideBar = false,
     enableClassicTicker = true,
     spenderFeedback = not isClassic,
 
@@ -158,6 +159,7 @@ end
 
 function NugEnergy:UpdateUpvalues()
     isVertical = NugEnergyDB.isVertical
+    onlyText = NugEnergyDB.hideBar
     spenderFeedback = NugEnergyDB.spenderFeedback
 end
 
@@ -749,10 +751,12 @@ function NugEnergy:Resize()
 
         f:SetOrientation("VERTICAL")
 
-        f.spark:ClearAllPoints()
-        f.spark:SetWidth(width)
-        f.spark:SetHeight(width*2)
-        f.spark:SetTexCoord(1,1,0,1,1,0,0,0)
+        if not onlyText then
+            f.spark:ClearAllPoints()
+            f.spark:SetWidth(width)
+            f.spark:SetHeight(width*2)
+            f.spark:SetTexCoord(1,1,0,1,1,0,0,0)
+        end
 
         text:ClearAllPoints()
         local textAlign = NugEnergyDB.textAlign
@@ -775,10 +779,12 @@ function NugEnergy:Resize()
 
         f:SetOrientation("HORIZONTAL")
 
-        f.spark:ClearAllPoints()
-        f.spark:SetTexCoord(0,1,0,1)
-        f.spark:SetWidth(height*2)
-        f.spark:SetHeight(height)
+        if not onlyText then
+            f.spark:ClearAllPoints()
+            f.spark:SetTexCoord(0,1,0,1)
+            f.spark:SetWidth(height*2)
+            f.spark:SetHeight(height)
+        end
 
         text:ClearAllPoints()
         local textAlign = NugEnergyDB.textAlign
@@ -796,21 +802,23 @@ function NugEnergy:Resize()
         text:SetJustifyV("CENTER")
     end
 
-    f.spentBar:ClearAllPoints()
-    self:UpdateEnergy()
+    if not onlyText then
+        f.spentBar:ClearAllPoints()
+        self:UpdateEnergy()
 
-    local tex = getStatusbar()
-    f:SetStatusBarTexture(tex)
-    f.bg:SetTexture(tex)
-    f.spentBar:SetTexture(tex)
+        local tex = getStatusbar()
+        f:SetStatusBarTexture(tex)
+        f.bg:SetTexture(tex)
+        f.spentBar:SetTexture(tex)
 
-    f.spentBar:SetWidth(width)
-    f.spentBar:SetHeight(height)
+        f.spentBar:SetWidth(width)
+        f.spentBar:SetHeight(height)
 
-    local hmul,vmul = 1.5, 1.8
-    if isVertical then hmul, vmul = vmul, hmul end
-    f.alertFrame:SetWidth(width*hmul)
-    f.alertFrame:SetHeight(height*vmul)
+        local hmul,vmul = 1.5, 1.8
+        if isVertical then hmul, vmul = vmul, hmul end
+        f.alertFrame:SetWidth(width*hmul)
+        f.alertFrame:SetHeight(height*vmul)
+    end
 end
 
 function NugEnergy:ResizeText()
