@@ -1426,6 +1426,7 @@ function NugEnergy:CreateGUI()
                             },
                             customcolor2 = {
                                 name = L"Alt Color",
+                                desc = L"(Execute-phase)",
                                 type = 'color',
                                 order = 2,
                                 get = function(info)
@@ -1527,7 +1528,7 @@ function NugEnergy:CreateGUI()
                                 dialogControl = "LSM30_Statusbar",
                             },
                             width = {
-                                name = "Width",
+                                name = L"Width",
                                 type = "range",
                                 get = function(info) return NugEnergyDB.width end,
                                 set = function(info, v)
