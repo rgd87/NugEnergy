@@ -52,6 +52,10 @@ local PowerTypeIndex
 local ForcedToShow
 local GetPower = UnitPower
 local GetPowerMax = UnitPowerMax
+local UnitIsFriend = UnitIsFriend
+local IsStealthed = IsStealthed
+local UnitIsFriend = UnitIsFriend
+local GetUnitSpeed = GetUnitSpeed
 
 local execute = false
 local execute_range = nil
@@ -62,6 +66,8 @@ local twEnabledCappedOnly
 local twStart
 local twLength
 local twCrossfade
+local twChangeColor
+local twPlaySound
 
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
@@ -112,6 +118,9 @@ local defaults = {
     twStart = 0.9,
     twLength = 0.4,
     twCrossfade = 0.15,
+    twChangeColor = true,
+    twPlaySound = false,
+    soundChannel = "SFX",
 }
 
 local free_marks = {}
@@ -184,6 +193,8 @@ function NugEnergy:UpdateUpvalues()
     isVertical = NugEnergyDB.isVertical
     onlyText = NugEnergyDB.hideBar
     spenderFeedback = NugEnergyDB.spenderFeedback
+    twPlaySound = NugEnergyDB.twPlaySound
+    twChangeColor = NugEnergyDB.twChangeColor
 end
 
 
@@ -229,6 +240,7 @@ end
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
+local heartbeatPlayed = false
 local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
     return function(unit)
         local p = GetTime() - lastEnergyTickTime
@@ -278,6 +290,7 @@ local ClassicTickerOnUpdate = function(self)
     local now = GetTime()
     if currentEnergy > lastEnergyValue or now >= lastEnergyTickTime + 2 then
         lastEnergyTickTime = now
+        heartbeatPlayed = false
     end
     lastEnergyValue = currentEnergy
 end
@@ -447,7 +460,9 @@ function NugEnergy.Initialize(self)
     return true
 end
 
-
+local heartbeatEligible
+local heartbeatEligibleLastTime = 0
+local heartbeatEligibleTimeout = 8
 
 function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
@@ -489,7 +504,23 @@ function NugEnergy.UpdateEnergy(self, elapsed)
         self:SetColor(unpack(c))
 
         if twEnabled and tickerEnabled and (not twEnabledCappedOnly or capped) and GetTickProgress() > twStart then
-            ClassicTickerColorUpdate(self, GetTickProgress(), c)
+
+            if twPlaySound then
+                local now = GetTime()
+                heartbeatEligible = IsStealthed() and UnitExists("target") and not UnitIsFriend("target", "player") and GetUnitSpeed("player") > 0
+                if heartbeatEligible then
+                    heartbeatEligibleLastTime = now
+                end
+
+                if not heartbeatPlayed and now - heartbeatEligibleLastTime < heartbeatEligibleTimeout then
+                    heartbeatPlayed = true
+                    PlaySoundFile("Interface\\AddOns\\NugEnergy\\heartbeat.mp3", "Master")
+                end
+            end
+
+            if twChangeColor then
+                ClassicTickerColorUpdate(self, GetTickProgress(), c)
+            end
         end
 
         self:SetValue(p)
@@ -1609,6 +1640,43 @@ function NugEnergy:CreateGUI()
                                     twEnabledCappedOnly = NugEnergyDB.twEnabledCappedOnly
                                 end
                             },
+
+                            twChangeColor = {
+                                name = L"Change Color",
+                                type = "toggle",
+                                width = "full",
+                                order = 2.3,
+                                get = function(info) return NugEnergyDB.twChangeColor end,
+                                set = function(info, v)
+                                    NugEnergyDB.twChangeColor = not NugEnergyDB.twChangeColor
+                                    twChangeColor = NugEnergyDB.twChangeColor
+                                end
+                            },
+                            twPlaySound = {
+                                name = L"Play Sound",
+                                type = "toggle",
+                                width = "double",
+                                order = 2.4,
+                                get = function(info) return NugEnergyDB.twPlaySound end,
+                                set = function(info, v)
+                                    NugEnergyDB.twPlaySound = not NugEnergyDB.twPlaySound
+                                    twPlaySound = NugEnergyDB.twPlaySound
+                                end
+                            },
+                            soundChannel = {
+                                name = L"Sound Channel",
+                                type = 'select',
+                                order = 2.5,
+                                values = {
+                                    SFX = "SFX",
+                                    Music = "Music",
+                                    Ambience = "Ambience",
+                                    Master = "Master",
+                                },
+                                get = function(info) return NugEnergyDB.soundChannel end,
+                                set = function( info, v ) NugEnergyDB.soundChannel = v end,
+                            },
+
                             twStart = {
                                 name = L"Start Time",
                                 type = "range",
@@ -1646,7 +1714,7 @@ function NugEnergy:CreateGUI()
                                 min = 0,
                                 max = 0.5,
                                 step = 0.01,
-                                order = 4,
+                                order = 5,
                             },
                         },
                     },

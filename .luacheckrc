@@ -118,6 +118,8 @@ globals = {
 	"C_Timer",
 	"SlashCmdList",
 	"InterfaceOptionsFrame_OpenToCategory",
-
+	"UnitIsFriend",
+	"GetUnitSpeed",
+	"PlaySoundFile",
 
 }
