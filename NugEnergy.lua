@@ -88,6 +88,7 @@ local defaults = {
     mana = false,
     manaPriest = false,
     manaDruid = true,
+    enableFSR = true,
     -- powerTypeColors = true,
     -- focusColor = true
 
@@ -1712,14 +1713,20 @@ function NugEnergy:CreateGUI()
                                 type = "toggle",
                                 order = 3,
                                 get = function(info) return NugEnergyDB.manaDruid end,
-                                set = function(info, v) NugEnergyDB.manaDruid = not NugEnergyDB.manaDruid end
+                                set = function(info, v)
+                                    NugEnergyDB.manaDruid = not NugEnergyDB.manaDruid
+                                    NugEnergy:Initialize()
+                                end
                             },
                             manaPriest = {
                                 name = L"Priest Mana",
                                 type = "toggle",
                                 order = 4,
                                 get = function(info) return NugEnergyDB.manaPriest end,
-                                set = function(info, v) NugEnergyDB.manaPriest = not NugEnergyDB.manaPriest end
+                                set = function(info, v)
+                                    NugEnergyDB.manaPriest = not NugEnergyDB.manaPriest
+                                    NugEnergy:Initialize()
+                                end
                             },
                             mana = {
                                 name = L"Mana all classes",
@@ -1727,7 +1734,20 @@ function NugEnergy:CreateGUI()
                                 type = "toggle",
                                 order = 5,
                                 get = function(info) return NugEnergyDB.mana end,
-                                set = function(info, v) NugEnergyDB.mana = not NugEnergyDB.mana end
+                                set = function(info, v)
+                                    NugEnergyDB.mana = not NugEnergyDB.mana
+                                    NugEnergy:Initialize()
+                                end
+                            },
+                            enableFSR = {
+                                name = L"5 Second Rule",
+                                type = "toggle",
+                                order = 6,
+                                get = function(info) return NugEnergyDB.enableFSR end,
+                                set = function(info, v)
+                                    NugEnergyDB.enableFSR = not NugEnergyDB.enableFSR
+                                    NugEnergy:Initialize()
+                                end
                             },
                         },
                     },
@@ -1904,6 +1924,7 @@ end
 function NugEnergy:SwitchToMana()
             PowerFilter = "MANA"
             PowerTypeIndex = Enum.PowerType.Mana
+            self:SetNormalColor()
             lastEnergyValue = 0
             shouldBeFull = true
             twEnabled = false
@@ -1919,21 +1940,30 @@ function NugEnergy:SwitchToMana()
                 NugEnergy:UNIT_MAXPOWER()
             end
 
-            self.FSRWatcher = self.FSRWatcher or self:Make5SRWatcher(function()
-                if PowerFilter == "MANA" then
-                    GetPower = GetPower_ClassicMana5SR(switchToManaCallback)
-                    NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicMana5SR
-                    NugEnergy:UNIT_MAXPOWER()
-                end
-            end)
-            self.FSRWatcher:Enable()
+            if NugEnergyDB.enableFSR then
+                self.FSRWatcher = self.FSRWatcher or self:Make5SRWatcher(function()
+                    if PowerFilter == "MANA" then
+                        GetPower = GetPower_ClassicMana5SR(switchToManaCallback)
+                        NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicMana5SR
+                        NugEnergy:UNIT_MAXPOWER()
+                    end
+                end)
+                self.FSRWatcher:Enable()
 
-            self:SetScript("OnUpdate",self.UpdateEnergy)
-            ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
-            switchToManaCallback()
+                self:SetScript("OnUpdate",self.UpdateEnergy)
+                ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+                switchToManaCallback()
 
-            self.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
-            self:UNIT_MAXPOWER()
+                self.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
+                self:UNIT_MAXPOWER()
+            else
+                if self.FSRWatcher then self.FSRWatcher:Disable() end
+
+                self:SetScript("OnUpdate",self.UpdateEnergy)
+                ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+
+                switchToManaCallback()
+            end
 end
 
 function NugEnergy:Make5SRWatcher(callback)
