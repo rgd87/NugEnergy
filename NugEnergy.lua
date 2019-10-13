@@ -46,7 +46,6 @@ NugEnergy:RegisterEvent("PLAYER_LOGIN")
 NugEnergy:RegisterEvent("PLAYER_LOGOUT")
 local UnitPower = UnitPower
 local math_modf = math.modf
-
 local PowerFilter
 local PowerTypeIndex
 local ForcedToShow
@@ -64,6 +63,8 @@ local Enum_PowerType_LunarPower = EPT.LunarPower
 local Enum_PowerType_Focus = EPT.Focus
 local class = select(2,UnitClass("player"))
 local UnitAura = UnitAura
+
+local ColorArray = function(color) return {color.r, color.g, color.b} end
 
 local defaults = {
     point = "CENTER",
@@ -92,7 +93,19 @@ local defaults = {
     altColor = { .9, 0.1, 0.4 }, -- for dispatch and meta 2
     maxColor = { 131/255, 0.2, 0.2 }, --max color 3
     lowColor = { 141/255, 31/255, 62/255 }, --low color 4
-
+    enableColorByPowerType = true,
+    powerTypeColors = {
+        ["ENERGY"] = ColorArray(PowerBarColor["ENERGY"]),
+        ["FOCUS"] = ColorArray(PowerBarColor["FOCUS"]),
+        ["RAGE"] = ColorArray(PowerBarColor["RAGE"]),
+        ["RUNIC_POWER"] = ColorArray(PowerBarColor["RUNIC_POWER"]),
+        ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
+        ["FURY"] = ColorArray(PowerBarColor["FURY"]),
+        ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
+        ["PAIN"] = ColorArray(PowerBarColor["PAIN"]),
+        ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
+        ["MANA"] = ColorArray(PowerBarColor["MANA"]),
+    },
     textureName = "Glamour7",
     fontName = "Emblem",
     fontSize = 25,
@@ -103,7 +116,9 @@ local defaults = {
     outOfCombatAlpha = 0,
     isVertical = false,
 }
-
+local normalColor = defaults.normalColor
+local lowColor = defaults.lowColor
+local maxColor = defaults.maxColor
 local free_marks = {}
 
 local function SetupDefaults(t, defaults)
@@ -243,11 +258,13 @@ function NugEnergy.Initialize(self)
     if not self.initialized then
         self:Create()
         self.initialized = true
+        self:SetNormalColor("RAGE")
     end
 
 
     if class == "ROGUE" and NugEnergyDB.energy then
         PowerFilter = "ENERGY"
+        self:SetNormalColor(PowerFilter)
         PowerTypeIndex = Enum.PowerType.Energy
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
@@ -305,6 +322,7 @@ function NugEnergy.Initialize(self)
             if GetSpecialization() == 3 then
                 PowerFilter = "INSANITY"
                 PowerTypeIndex = Enum.PowerType.Insanity
+                self:SetNormalColor(PowerFilter)
                 voidformCost = IsPlayerSpell(193225) and 60 or 90 -- Legacy of the Void
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
@@ -338,6 +356,7 @@ function NugEnergy.Initialize(self)
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
+                self:SetNormalColor(PowerFilter)
                 shouldBeFull = true
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
@@ -359,6 +378,7 @@ function NugEnergy.Initialize(self)
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
                 PowerTypeIndex = Enum.PowerType.Rage
+                self:SetNormalColor(PowerFilter)
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
@@ -373,13 +393,14 @@ function NugEnergy.Initialize(self)
             elseif GetSpecialization() == 1 and NugEnergyDB.balance then
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
+                GetPower = RageBarGetPower(30, 10, 40)
                 PowerFilter = "LUNAR_POWER"
                 PowerTypeIndex = Enum.PowerType.LunarPower
+                self:SetNormalColor(PowerFilter)
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy
-                GetPower = RageBarGetPower(30, 10, 40)
+                -- self.UpdateEnergy = self.__UpdateEnergy       
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
@@ -393,6 +414,7 @@ function NugEnergy.Initialize(self)
                 self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
             end
+            self:UpdateEnergy()
         end
         self:UNIT_DISPLAYPOWER()
 
@@ -414,11 +436,14 @@ function NugEnergy.Initialize(self)
                 GetPower = RageBarGetPower(30, 10)
                 PowerFilter = "FURY"
                 PowerTypeIndex = Enum.PowerType.Fury
+                self:SetNormalColor(PowerFilter)
             else
                 GetPower = RageBarGetPower(30, 10, 30)
                 PowerFilter = "PAIN"
                 PowerTypeIndex = Enum.PowerType.Pain
+                self:SetNormalColor(PowerFilter)
             end
+            self:UpdateEnergy()
         end
         self:UNIT_DISPLAYPOWER()
 
@@ -430,6 +455,7 @@ function NugEnergy.Initialize(self)
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
+                self:SetNormalColor(PowerFilter)
                 shouldBeFull = true
                 -- GetPower = GetPowerBy5
                 -- GetPower = function(unit)
@@ -460,6 +486,7 @@ function NugEnergy.Initialize(self)
         end
         self:UNIT_DISPLAYPOWER()
 
+    --[[
     elseif class == "WARLOCK" and NugEnergyDB.shards then
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
@@ -476,14 +503,17 @@ function NugEnergy.Initialize(self)
             PowerFilter = "SOUL_SHARDS"
         end
         self:SPELLS_CHANGED()
+    ]]
     elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
         PowerFilter = "RUNIC_POWER"
         PowerTypeIndex = Enum.PowerType.RunicPower
+        self:SetNormalColor(PowerFilter)
         GetPower = RageBarGetPower(30, 10, nil, nil)
 
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
         PowerTypeIndex = Enum.PowerType.Rage
+        self:SetNormalColor(PowerFilter)
 
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
@@ -518,6 +548,7 @@ function NugEnergy.Initialize(self)
     elseif class == "HUNTER" and NugEnergyDB.focus then
         PowerFilter = "FOCUS"
         PowerTypeIndex = Enum.PowerType.Focus
+        self:SetNormalColor(PowerFilter)
         shouldBeFull = true
         self:SetScript("OnUpdate",self.UpdateEnergy)
         GetPower = GetPowerBy5
@@ -525,6 +556,7 @@ function NugEnergy.Initialize(self)
     elseif class == "SHAMAN" and NugEnergyDB.maelstrom then
         PowerFilter = "MAELSTROM"
         PowerTypeIndex = Enum.PowerType.Maelstrom
+        self:SetNormalColor(PowerFilter)
         GetPower = RageBarGetPower(30, 10)
 
         self:RegisterEvent("SPELLS_CHANGED")
@@ -555,7 +587,7 @@ function NugEnergy.Initialize(self)
     end
 
     self:UPDATE_STEALTH()
-    self:UNIT_POWER_UPDATE(nil, "player", PowerFilter)
+    self:UpdateEnergy()
     return true
 end
 
@@ -585,16 +617,16 @@ function NugEnergy.UpdateEnergy(self, elapsed)
         end
         local c
         if capped then
-            c = NugEnergyDB.maxColor
+            c = maxColor
             self.glowanim:SetDuration(0.15)
         elseif execute then
             c = NugEnergyDB.altColor
             self.glowanim:SetDuration(0.3)
         elseif insufficient then
-            c = NugEnergyDB.lowColor
+            c = lowColor
             self.glowanim:SetDuration(0.3)
         else
-            c = NugEnergyDB.normalColor
+            c = normalColor
             self.glowanim:SetDuration(0.3)
         end
         -- self.spentBar:SetColor(unpack(c))
@@ -746,6 +778,101 @@ function NugEnergy.ReconfigureMarks(self)
         NugEnergy:CreateMark(at)
     end
     -- NugEnergy:RealignMarks()
+end
+
+
+local function rgb2hsv (r, g, b)
+    local rabs, gabs, babs, rr, gg, bb, h, s, v, diff, diffc, percentRoundFn
+    rabs = r
+    gabs = g
+    babs = b
+    v = math.max(rabs, gabs, babs)
+    diff = v - math.min(rabs, gabs, babs);
+    diffc = function(c) return (v - c) / 6 / diff + 1 / 2 end
+    -- percentRoundFn = function(num) return math.floor(num * 100) / 100 end
+    if (diff == 0) then
+        h = 0
+        s = 0
+    else
+        s = diff / v;
+        rr = diffc(rabs);
+        gg = diffc(gabs);
+        bb = diffc(babs);
+
+        if (rabs == v) then
+            h = bb - gg;
+        elseif (gabs == v) then
+            h = (1 / 3) + rr - bb;
+        elseif (babs == v) then
+            h = (2 / 3) + gg - rr;
+        end
+        if (h < 0) then
+            h = h + 1;
+        elseif (h > 1) then
+            h = h - 1;
+        end
+    end
+    return h, s, v
+end
+
+local function hsv2rgb(h,s,v)
+    local r,g,b
+    local i = math.floor(h * 6);
+    local f = h * 6 - i;
+    local p = v * (1 - s);
+    local q = v * (1 - f * s);
+    local t = v * (1 - (1 - f) * s);
+    local rem = i % 6
+    if rem == 0 then
+        r = v; g = t; b = p;
+    elseif rem == 1 then
+        r = q; g = v; b = p;
+    elseif rem == 2 then
+        r = p; g = v; b = t;
+    elseif rem == 3 then
+        r = p; g = q; b = v;
+    elseif rem == 4 then
+        r = t; g = p; b = v;
+    elseif rem == 5 then
+        r = v; g = p; b = q;
+    end
+
+    return r,g,b
+end
+
+local function hsv_shift(src, hm,sm,vm)
+    local r,g,b = unpack(src)
+    local h,s,v = rgb2hsv(r,g,b)
+
+    -- rollover on hue
+    local h2 = h + hm
+    if h2 < 0 then h2 = h2 + 1 end
+    if h2 > 1 then h2 = h2 - 1 end
+
+    local s2 = s + sm
+    if s2 < 0 then s2 = 0 end
+    if s2 > 1 then s2 = 1 end
+
+    local v2 = v + vm
+    if v2 < 0 then v2 = 0 end
+    if v2 > 1 then v2 = 1 end
+
+    local r2,g2,b2 = hsv2rgb(h2, s2, v2)
+
+    return r2, g2, b2
+end
+
+
+function NugEnergy:SetNormalColor(powerType)
+    if NugEnergyDB.enableColorByPowerType then
+        normalColor = NugEnergyDB.powerTypeColors[powerType]
+        lowColor = { hsv_shift(normalColor, -0.07, -0.22, -0.3) }
+        maxColor = { hsv_shift(normalColor, 0, -0.3, -0.4) }
+    else
+        normalColor = NugEnergyDB.normalColor
+        lowColor = NugEnergyDB.lowColor
+        maxColor = NugEnergyDB.maxColor
+    end
 end
 
 function NugEnergy:Resize()

@@ -118,6 +118,6 @@ globals = {
 	"C_Timer",
 	"SlashCmdList",
 	"InterfaceOptionsFrame_OpenToCategory",
-
+	"PowerBarColor",
 
 }
