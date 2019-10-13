@@ -103,7 +103,7 @@ local defaults = {
     maxColor = { 131/255, 0.2, 0.2 }, --max color 3
     lowColor = { 141/255, 31/255, 62/255 }, --low color 4
     twColor = { 0.15, 0.9, 0.4 }, -- tick window color
-    enableColorByPowerType = true,
+    enableColorByPowerType = false,
     powerTypeColors = {
         ["ENERGY"] = ColorArray(PowerBarColor["ENERGY"]),
         ["FOCUS"] = ColorArray(PowerBarColor["FOCUS"]),
@@ -1419,6 +1419,7 @@ function NugEnergy:CreateGUI()
                             classColor = {
                                 name = L"Normal Color",
                                 type = 'color',
+                                disabled = function() return NugEnergyDB.enableColorByPowerType end,
                                 get = function(info)
                                     local r,g,b = unpack(NugEnergyDB.normalColor)
                                     return r,g,b
@@ -1443,6 +1444,7 @@ function NugEnergy:CreateGUI()
                             customcolor3 = {
                                 name = L"Max Color",
                                 type = 'color',
+                                disabled = function() return NugEnergyDB.enableColorByPowerType end,
                                 order = 3,
                                 get = function(info)
                                     local r,g,b = unpack(NugEnergyDB.maxColor)
@@ -1455,6 +1457,7 @@ function NugEnergy:CreateGUI()
                             customcolor4 = {
                                 name = L"Insufficient Color",
                                 type = 'color',
+                                disabled = function() return NugEnergyDB.enableColorByPowerType end,
                                 order = 4,
                                 get = function(info)
                                     local r,g,b = unpack(NugEnergyDB.lowColor)
