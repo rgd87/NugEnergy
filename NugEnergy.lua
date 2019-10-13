@@ -258,13 +258,13 @@ function NugEnergy.Initialize(self)
     if not self.initialized then
         self:Create()
         self.initialized = true
-        self:SetNormalColor("RAGE")
+        self:SetNormalColor()
     end
 
 
     if class == "ROGUE" and NugEnergyDB.energy then
         PowerFilter = "ENERGY"
-        self:SetNormalColor(PowerFilter)
+        self:SetNormalColor()
         PowerTypeIndex = Enum.PowerType.Energy
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
@@ -322,7 +322,7 @@ function NugEnergy.Initialize(self)
             if GetSpecialization() == 3 then
                 PowerFilter = "INSANITY"
                 PowerTypeIndex = Enum.PowerType.Insanity
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
                 voidformCost = IsPlayerSpell(193225) and 60 or 90 -- Legacy of the Void
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
@@ -356,7 +356,7 @@ function NugEnergy.Initialize(self)
             if newPowerType == "ENERGY" and NugEnergyDB.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
                 shouldBeFull = true
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
@@ -378,7 +378,7 @@ function NugEnergy.Initialize(self)
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
                 PowerTypeIndex = Enum.PowerType.Rage
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
@@ -396,7 +396,7 @@ function NugEnergy.Initialize(self)
                 GetPower = RageBarGetPower(30, 10, 40)
                 PowerFilter = "LUNAR_POWER"
                 PowerTypeIndex = Enum.PowerType.LunarPower
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
@@ -436,12 +436,12 @@ function NugEnergy.Initialize(self)
                 GetPower = RageBarGetPower(30, 10)
                 PowerFilter = "FURY"
                 PowerTypeIndex = Enum.PowerType.Fury
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
             else
                 GetPower = RageBarGetPower(30, 10, 30)
                 PowerFilter = "PAIN"
                 PowerTypeIndex = Enum.PowerType.Pain
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
             end
             self:UpdateEnergy()
         end
@@ -455,7 +455,7 @@ function NugEnergy.Initialize(self)
             if newPowerType == "ENERGY" then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
-                self:SetNormalColor(PowerFilter)
+                self:SetNormalColor()
                 shouldBeFull = true
                 -- GetPower = GetPowerBy5
                 -- GetPower = function(unit)
@@ -507,13 +507,13 @@ function NugEnergy.Initialize(self)
     elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
         PowerFilter = "RUNIC_POWER"
         PowerTypeIndex = Enum.PowerType.RunicPower
-        self:SetNormalColor(PowerFilter)
+        self:SetNormalColor()
         GetPower = RageBarGetPower(30, 10, nil, nil)
 
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
         PowerTypeIndex = Enum.PowerType.Rage
-        self:SetNormalColor(PowerFilter)
+        self:SetNormalColor()
 
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
@@ -548,7 +548,7 @@ function NugEnergy.Initialize(self)
     elseif class == "HUNTER" and NugEnergyDB.focus then
         PowerFilter = "FOCUS"
         PowerTypeIndex = Enum.PowerType.Focus
-        self:SetNormalColor(PowerFilter)
+        self:SetNormalColor()
         shouldBeFull = true
         self:SetScript("OnUpdate",self.UpdateEnergy)
         GetPower = GetPowerBy5
@@ -556,7 +556,7 @@ function NugEnergy.Initialize(self)
     elseif class == "SHAMAN" and NugEnergyDB.maelstrom then
         PowerFilter = "MAELSTROM"
         PowerTypeIndex = Enum.PowerType.Maelstrom
-        self:SetNormalColor(PowerFilter)
+        self:SetNormalColor()
         GetPower = RageBarGetPower(30, 10)
 
         self:RegisterEvent("SPELLS_CHANGED")
@@ -863,9 +863,9 @@ local function hsv_shift(src, hm,sm,vm)
 end
 
 
-function NugEnergy:SetNormalColor(powerType)
-    if NugEnergyDB.enableColorByPowerType then
-        normalColor = NugEnergyDB.powerTypeColors[powerType]
+function NugEnergy:SetNormalColor()
+    if NugEnergyDB.enableColorByPowerType and PowerFilter then
+        normalColor = NugEnergyDB.powerTypeColors[PowerFilter]
         lowColor = { hsv_shift(normalColor, -0.07, -0.22, -0.3) }
         maxColor = { hsv_shift(normalColor, 0, -0.3, -0.4) }
     else
@@ -1602,6 +1602,16 @@ function NugEnergy:CreateGUI()
                                 end,
                             },
                         },
+                    },
+                    spenderFeedback = {
+                        name = L"Color by Power Type",
+                        type = "toggle",
+                        order = 1.1,
+                        get = function(info) return NugEnergyDB.enableColorByPowerType end,
+                        set = function(info, v)
+                            NugEnergyDB.enableColorByPowerType = not NugEnergyDB.enableColorByPowerType
+                            NugEnergy:SetNormalColor()
+                        end
                     },
                     fadeGroup = {
                         type = "group",
