@@ -121,5 +121,6 @@ globals = {
 	"UnitIsFriend",
 	"GetUnitSpeed",
 	"PlaySoundFile",
+	"PowerBarColor",
 
 }
