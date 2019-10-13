@@ -133,7 +133,8 @@ local defaults = {
     twLength = 0.4,
     twCrossfade = 0.15,
     twChangeColor = true,
-    twPlaySound = false,
+    soundName = "none",
+    soundNameCustom = "Interface\\AddOns\\YourSound.mp3",
     soundChannel = "SFX",
 }
 local normalColor = defaults.normalColor
@@ -209,7 +210,7 @@ function NugEnergy:UpdateUpvalues()
     isVertical = NugEnergyDB.isVertical
     onlyText = NugEnergyDB.hideBar
     spenderFeedback = NugEnergyDB.spenderFeedback
-    twPlaySound = NugEnergyDB.twPlaySound
+    twPlaySound = NugEnergyDB.soundNameFull ~= "none"
     twChangeColor = NugEnergyDB.twChangeColor
 end
 
@@ -536,7 +537,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
 
                 if not heartbeatPlayed and now - heartbeatEligibleLastTime < heartbeatEligibleTimeout then
                     heartbeatPlayed = true
-                    PlaySoundFile("Interface\\AddOns\\NugEnergy\\heartbeat.mp3", "Master")
+                    self:PlaySound()
                 end
             end
 
@@ -580,7 +581,17 @@ NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 --     else
 --         idleSince = nil
 --     end
--- end
+-- 
+
+function NugEnergy:PlaySound()
+    local sound
+    if NugEnergyDB.soundName == "Heartbeat" then
+        sound = "Interface\\AddOns\\NugEnergy\\heartbeat.mp3"
+    elseif NugEnergyDB.soundName then
+        sound = NugEnergyDB.soundNameCustom
+    end
+    PlaySoundFile(sound, NugEnergyDB.soundChannel)
+end
 
 function NugEnergy.UNIT_HEALTH(self, event, unit)
     if unit ~= "target" then return end
@@ -1800,21 +1811,37 @@ function NugEnergy:CreateGUI()
                                     twChangeColor = NugEnergyDB.twChangeColor
                                 end
                             },
-                            twPlaySound = {
-                                name = L"Play Sound",
-                                type = "toggle",
-                                width = "double",
-                                order = 2.4,
-                                get = function(info) return NugEnergyDB.twPlaySound end,
-                                set = function(info, v)
-                                    NugEnergyDB.twPlaySound = not NugEnergyDB.twPlaySound
-                                    twPlaySound = NugEnergyDB.twPlaySound
-                                end
+                            soundNameFull = {
+                                name = L"Sound",
+                                type = 'select',
+                                order = 7.5,
+                                values = {
+                                    none = "None",
+                                    Heartbeat = "Heartbeat",
+                                    custom = "Custom",
+                                },
+                                get = function(info)
+                                    return NugEnergyDB.soundName
+                                end,
+                                set = function( info, v )
+                                    NugEnergyDB.soundName = v
+                                    NugEnergy:UpdateUpvalues()
+                                end,
+                            },
+                            PlayButton = {
+                                name = L"Play",
+                                type = 'execute',
+                                width = "half",
+                                order = 7.7,
+                                disabled = function() return (NugEnergyDB.soundNameFull == "none") end,
+                                func = function()
+                                    NugEnergy:PlaySound()
+                                end,
                             },
                             soundChannel = {
                                 name = L"Sound Channel",
                                 type = 'select',
-                                order = 2.5,
+                                order = 7.6,
                                 values = {
                                     SFX = "SFX",
                                     Music = "Music",
@@ -1823,6 +1850,17 @@ function NugEnergy:CreateGUI()
                                 },
                                 get = function(info) return NugEnergyDB.soundChannel end,
                                 set = function( info, v ) NugEnergyDB.soundChannel = v end,
+                            },
+                            customsoundNameFull = {
+                                name = L"Custom Sound",
+                                type = 'input',
+                                width = "full",
+                                order = 7.8,
+                                disabled = function() return (NugEnergyDB.soundName ~= "custom") end,
+                                get = function(info) return NugEnergyDB.soundNameCustom end,
+                                set = function( info, v )
+                                    NugEnergyDB.soundNameCustom = v
+                                end,
                             },
 
                             twStart = {
