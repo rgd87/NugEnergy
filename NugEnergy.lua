@@ -1640,7 +1640,7 @@ function NugEnergy:CreateGUI()
                                 name = L"Spent / Ticker Fade",
                                 desc = L"Fade effect after each tick or when spending",
                                 type = "toggle",
-                                order = 1,
+                                order = 2,
                                 get = function(info) return NugEnergyDB.spenderFeedback end,
                                 set = function(info, v)
                                     NugEnergyDB.spenderFeedback = not NugEnergyDB.spenderFeedback
