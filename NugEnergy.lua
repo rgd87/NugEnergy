@@ -400,7 +400,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy       
+                -- self.UpdateEnergy = self.__UpdateEnergy
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
@@ -1742,7 +1742,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:ResizeText()
                                 end,
                                 min = 5,
-                                max = 50,
+                                max = 80,
                                 step = 1,
                             },
                             hideText = {
