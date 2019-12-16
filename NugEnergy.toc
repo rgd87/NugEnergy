@@ -6,7 +6,7 @@
 ## SavedVariablesPerCharacter: NugEnergyDB_Character
 ## Version: @project-version@
 
-## X-WoWI-ID: 24934
+## X-WoWI-ID: 9099
 ## X-Curse-Project-ID: 43975
 
 Libs\LibStub\LibStub.lua
