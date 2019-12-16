@@ -19,3 +19,4 @@ Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 NugEnergy.lua
 
 Locales\ruRU.lua
+Locales\zhTW.lua
