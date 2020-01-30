@@ -46,6 +46,7 @@ NugEnergy:RegisterEvent("PLAYER_LOGIN")
 NugEnergy:RegisterEvent("PLAYER_LOGOUT")
 local UnitPower = UnitPower
 local math_modf = math.modf
+local math_abs = math.abs
 local PowerFilter
 local PowerTypeIndex
 local ForcedToShow
@@ -86,6 +87,7 @@ local defaults = {
     hideBar = false,
     enableClassicTicker = true,
     spenderFeedback = not isClassic,
+    smoothing = true,
 
     width = 100,
     height = 30,
@@ -1057,68 +1059,123 @@ function NugEnergy.Create(self)
     local color = NugEnergyDB.normalColor
     f:SetColor(unpack(color))
 
-    f._SetValue = f._SetValue or f.SetValue
 
-    f.SetValue = function(self, new)
-        local cur = self:GetValue()
-        local min, max = self:GetMinMaxValues()
-        local fwidth = self:GetWidth()
-        local fheight = self:GetHeight()
-        local total = max-min
+    if not f.SetValueWithoutSpark then
+        f.SetValueWithoutSpark = f.SetValue
+        -- Spark Layer
+        f.SetValue = function(self, new)
+            local cur = self:GetValue()
+            local min, max = self:GetMinMaxValues()
+            local fwidth = self:GetWidth()
+            local fheight = self:GetHeight()
+            local total = max-min
 
-        if spenderFeedback then
-            local diff = new - cur
-            if diff < 0 and math.abs(diff)/max > 0.1 then
-
-                local p1 = new/max
-                local pd = (-diff/max)
-
-
-                if isVertical then
-                    local lpos = p1*fheight
-                    local len = pd*fheight
-                    self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
-                    self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
-                    self.spentBar:SetHeight(len)
-                else
-                    local lpos = p1*fwidth
-                    local len = pd*fwidth
-                    self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
-                    self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
-                    self.spentBar:SetWidth(len)
+            -- spark
+            local p = 0
+            if total > 0 then
+                p = (new-min)/(max-min)
+                if p > 1 then
+                    p = 1
                 end
-                if self.trail:IsPlaying() then self.trail:Stop() end
-                self.trail:Play()
-                self.spentBar.currentValue = cur
+                if p <= 0.07 then -- hide spark when it's close to left border
+                    p = p - 0.2
+                    if p < 0 then p = 0 end
+                    local a = p*20
+                    self.spark:SetAlpha(a)
+                -- if p > 0.95 then
+                --     local a = (1-p)*20
+                --     self.spark:SetAlpha(a)
+                else
+                    self.spark:SetAlpha(1)
+                end
             end
-        end
-
-        -- spark
-        local p = 0
-        if total > 0 then
-            p = (new-min)/(max-min)
-            if p > 1 then
-                p = 1
-            end
-            if p <= 0.07 then -- hide spark when it's close to left border
-                p = p - 0.2
-                if p < 0 then p = 0 end
-                local a = p*20
-                self.spark:SetAlpha(a)
-            -- if p > 0.95 then
-            --     local a = (1-p)*20
-            --     self.spark:SetAlpha(a)
+            if isVertical then
+                self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
             else
-                self.spark:SetAlpha(1)
+                self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
             end
+            return self:SetValueWithoutSpark(new)
         end
-        if isVertical then
-            self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
-        else
-            self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
+    end
+
+    if not f.SetValueWithoutSmoothing then
+        f.SetValueWithoutSmoothing = f.SetValue
+
+        f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
+        f.smoothTicker:Show()
+        f.smoothTicker.parent = f
+        f.smoothTicker:SetScript("OnUpdate", function(self)
+            local value = self.smoothTargetValue
+            local bar = self.parent
+            local cur = bar:GetValue()
+            if cur == value then return end
+
+            local threshold = self.threshold
+
+            local new = cur + (value-cur)/6
+            bar:SetValueWithoutSmoothing(new)
+
+            if cur == value or math_abs(new - value) < threshold then
+                bar:SetValueWithoutSmoothing(value)
+                self.smoothTargetValue = nil
+            end
+        end)
+
+        f.SetValue = function(self, new)
+            self.smoothTicker.smoothTargetValue = new
         end
 
-        return self:_SetValue(new)
+        f._SetMinMaxValues = f.SetMinMaxValues
+
+        f.SetMinMaxValues = function(self, min, max)
+            local range = max - min
+            self.smoothTicker.threshold = range/2000
+            self:_SetMinMaxValues(min, max)
+        end
+    end
+    if not NugEnergyDB.smoothing then
+        f.SetValue = f.SetValueWithoutSmoothing
+        f.smoothTicker:Hide()
+    end
+
+    if not f.SetValueWithoutSpenderFeedback then
+        f.SetValueWithoutSpenderFeedback = f.SetValue
+        f.SetValue = function(self, new)
+            local cur = self:GetValue()
+            local min, max = self:GetMinMaxValues()
+            local fwidth = self:GetWidth()
+            local fheight = self:GetHeight()
+            local total = max-min
+
+            if spenderFeedback then
+                local diff = new - cur
+                if diff < 0 and math.abs(diff)/max > 0.1 then
+
+                    local p1 = new/max
+                    local pd = (-diff/max)
+
+
+                    if isVertical then
+                        local lpos = p1*fheight
+                        local len = pd*fheight
+                        self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
+                        self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
+                        self.spentBar:SetHeight(len)
+                    else
+                        local lpos = p1*fwidth
+                        local len = pd*fwidth
+                        self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
+                        self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
+                        self.spentBar:SetWidth(len)
+                    end
+                    if self.trail:IsPlaying() then self.trail:Stop() end
+                    self.trail:Play()
+                    self.spentBar.currentValue = cur
+                end
+            end
+
+            return self:SetValueWithoutSpenderFeedback(new)
+        end
     end
 
 
@@ -1675,7 +1732,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:Resize()
                                 end,
                                 min = 30,
-                                max = 300,
+                                max = 600,
                                 step = 1,
                                 order = 7,
                             },
@@ -1688,7 +1745,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:Resize()
                                 end,
                                 min = 10,
-                                max = 60,
+                                max = 100,
                                 step = 1,
                                 order = 8,
                             },
