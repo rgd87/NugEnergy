@@ -245,6 +245,14 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
+ClassicTickerFrame.Enable = function(self)
+    self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+    self.isEnabled = true
+end
+ClassicTickerFrame.Disable = function(self)
+    self:SetScript("OnUpdate", nil)
+    self.isEnabled = false
+end
 local UNIT_MAXPOWER_ClassicTicker = function(self)
     self:SetMinMaxValues(0, 2)
 end
@@ -288,10 +296,15 @@ function NugEnergy.Initialize(self)
 
         if isClassic and NugEnergyDB.enableClassicTicker then
             GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
-            ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+            ClassicTickerFrame:Enable()
+            self:UpdateBarEffects() -- Will Disable Smoothing
             NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
+            if ClassicTickerFrame.isEnabled then
+                ClassicTickerFrame:Disable()
+                self:UpdateBarEffects()
+            end
             NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
             self:RegisterEvent("SPELLS_CHANGED")
             self:SPELLS_CHANGED()
@@ -369,9 +382,14 @@ function NugEnergy.Initialize(self)
                 if isClassic and NugEnergyDB.enableClassicTicker then
                     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
-                    ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+                    ClassicTickerFrame:Enable()
+                    self:UpdateBarEffects()
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
+                    if ClassicTickerFrame.isEnabled then
+                        ClassicTickerFrame:Disable()
+                        self:UpdateBarEffects()
+                    end
                 end
                 self:UNIT_MAXPOWER()
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -1060,123 +1078,9 @@ function NugEnergy.Create(self)
     f:SetColor(unpack(color))
 
 
-    if not f.SetValueWithoutSpark then
-        f.SetValueWithoutSpark = f.SetValue
-        -- Spark Layer
-        f.SetValue = function(self, new)
-            local cur = self:GetValue()
-            local min, max = self:GetMinMaxValues()
-            local fwidth = self:GetWidth()
-            local fheight = self:GetHeight()
-            local total = max-min
+    f.OriginalSetValue = f.OriginalSetValue or f.SetValue
 
-            -- spark
-            local p = 0
-            if total > 0 then
-                p = (new-min)/(max-min)
-                if p > 1 then
-                    p = 1
-                end
-                if p <= 0.07 then -- hide spark when it's close to left border
-                    p = p - 0.2
-                    if p < 0 then p = 0 end
-                    local a = p*20
-                    self.spark:SetAlpha(a)
-                -- if p > 0.95 then
-                --     local a = (1-p)*20
-                --     self.spark:SetAlpha(a)
-                else
-                    self.spark:SetAlpha(1)
-                end
-            end
-            if isVertical then
-                self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
-            else
-                self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
-            end
-            return self:SetValueWithoutSpark(new)
-        end
-    end
-
-    if not f.SetValueWithoutSmoothing then
-        f.SetValueWithoutSmoothing = f.SetValue
-
-        f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
-        f.smoothTicker:Show()
-        f.smoothTicker.parent = f
-        f.smoothTicker:SetScript("OnUpdate", function(self)
-            local value = self.smoothTargetValue
-            local bar = self.parent
-            local cur = bar:GetValue()
-            if cur == value then return end
-
-            local threshold = self.threshold
-
-            local new = cur + (value-cur)/6
-            bar:SetValueWithoutSmoothing(new)
-
-            if cur == value or math_abs(new - value) < threshold then
-                bar:SetValueWithoutSmoothing(value)
-                self.smoothTargetValue = nil
-            end
-        end)
-
-        f.SetValue = function(self, new)
-            self.smoothTicker.smoothTargetValue = new
-        end
-
-        f._SetMinMaxValues = f.SetMinMaxValues
-
-        f.SetMinMaxValues = function(self, min, max)
-            local range = max - min
-            self.smoothTicker.threshold = range/2000
-            self:_SetMinMaxValues(min, max)
-        end
-    end
-    if not NugEnergyDB.smoothing then
-        f.SetValue = f.SetValueWithoutSmoothing
-        f.smoothTicker:Hide()
-    end
-
-    if not f.SetValueWithoutSpenderFeedback then
-        f.SetValueWithoutSpenderFeedback = f.SetValue
-        f.SetValue = function(self, new)
-            local cur = self:GetValue()
-            local min, max = self:GetMinMaxValues()
-            local fwidth = self:GetWidth()
-            local fheight = self:GetHeight()
-            local total = max-min
-
-            if spenderFeedback then
-                local diff = new - cur
-                if diff < 0 and math.abs(diff)/max > 0.1 then
-
-                    local p1 = new/max
-                    local pd = (-diff/max)
-
-
-                    if isVertical then
-                        local lpos = p1*fheight
-                        local len = pd*fheight
-                        self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
-                        self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
-                        self.spentBar:SetHeight(len)
-                    else
-                        local lpos = p1*fwidth
-                        local len = pd*fwidth
-                        self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
-                        self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
-                        self.spentBar:SetWidth(len)
-                    end
-                    if self.trail:IsPlaying() then self.trail:Stop() end
-                    self.trail:Play()
-                    self.spentBar.currentValue = cur
-                end
-            end
-
-            return self:SetValueWithoutSpenderFeedback(new)
-        end
-    end
+    self:UpdateBarEffects()
 
 
     local trail = spentBar:CreateAnimationGroup()
@@ -1341,6 +1245,130 @@ function NugEnergy.Create(self)
         _,_, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y = self:GetPoint(1)
     end)
 end
+
+function NugEnergy:UpdateBarEffects()
+    local f = self
+
+    f.SetValue = f.OriginalSetValue
+
+    if true then
+        f.SetValueWithoutSpark = f.SetValue
+        -- Spark Layer
+        f.SetValue = function(self, new)
+            local cur = self:GetValue()
+            local min, max = self:GetMinMaxValues()
+            local fwidth = self:GetWidth()
+            local fheight = self:GetHeight()
+            local total = max-min
+
+            -- spark
+            local p = 0
+            if total > 0 then
+                p = (new-min)/(max-min)
+                if p > 1 then
+                    p = 1
+                end
+                if p <= 0.07 then -- hide spark when it's close to left border
+                    p = p - 0.2
+                    if p < 0 then p = 0 end
+                    local a = p*20
+                    self.spark:SetAlpha(a)
+                -- if p > 0.95 then
+                --     local a = (1-p)*20
+                --     self.spark:SetAlpha(a)
+                else
+                    self.spark:SetAlpha(1)
+                end
+            end
+            if isVertical then
+                self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
+            else
+                self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
+            end
+            return self:SetValueWithoutSpark(new)
+        end
+    end
+
+    if NugEnergyDB.smoothing and not ClassicTickerFrame.isEnabled then
+        f.SetValueWithoutSmoothing = f.SetValue
+
+        f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
+        f.smoothTicker:Show()
+        f.smoothTicker.parent = f
+        f.smoothTicker:SetScript("OnUpdate", function(self)
+            local value = self.smoothTargetValue
+            local bar = self.parent
+            local cur = bar:GetValue()
+            if not value or cur == value then return end
+
+            local threshold = self.threshold
+
+            local new = cur + (value-cur)/6
+            bar:SetValueWithoutSmoothing(new)
+
+            if cur == value or math_abs(new - value) < threshold then
+                bar:SetValueWithoutSmoothing(value)
+                self.smoothTargetValue = nil
+            end
+        end)
+
+        f.SetValue = function(self, new)
+            self.smoothTicker.smoothTargetValue = new
+        end
+
+        f._SetMinMaxValues = f._SetMinMaxValues or f.SetMinMaxValues
+
+        f.SetMinMaxValues = function(self, min, max)
+            local range = max - min
+            self.smoothTicker.threshold = range/2000
+            self:_SetMinMaxValues(min, max)
+        end
+    else
+        if f.smoothTicker then f.smoothTicker:Hide() end
+    end
+
+    if NugEnergyDB.spenderFeedback then
+        f.SetValueWithoutSpenderFeedback = f.SetValue
+        f.SetValue = function(self, new)
+            local cur = self:GetValue()
+            local min, max = self:GetMinMaxValues()
+            local fwidth = self:GetWidth()
+            local fheight = self:GetHeight()
+            local total = max-min
+
+            if spenderFeedback then
+                local diff = new - cur
+                if diff < 0 and math.abs(diff)/max > 0.1 then
+
+                    local p1 = new/max
+                    local pd = (-diff/max)
+
+
+                    if isVertical then
+                        local lpos = p1*fheight
+                        local len = pd*fheight
+                        self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
+                        self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
+                        self.spentBar:SetHeight(len)
+                    else
+                        local lpos = p1*fwidth
+                        local len = pd*fwidth
+                        self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
+                        self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
+                        self.spentBar:SetWidth(len)
+                    end
+                    if self.trail:IsPlaying() then self.trail:Stop() end
+                    self.trail:Play()
+                    self.spentBar.currentValue = cur
+                end
+            end
+
+            return self:SetValueWithoutSpenderFeedback(new)
+        end
+    end
+end
+
+
 
 local ParseOpts = function(str)
     local fields = {}
@@ -1663,7 +1691,7 @@ function NugEnergy:CreateGUI()
                             },
                         },
                     },
-                    spenderFeedback = {
+                    ColorByPowerType = {
                         name = L"Color by Power Type",
                         type = "toggle",
                         order = 1.1,
@@ -1702,6 +1730,17 @@ function NugEnergy:CreateGUI()
                                 set = function(info, v)
                                     NugEnergyDB.spenderFeedback = not NugEnergyDB.spenderFeedback
                                     NugEnergy:UpdateUpvalues()
+                                    NugEnergy:UpdateBarEffects()
+                                end
+                            },
+                            smoothing = {
+                                name = L"Smoothing",
+                                type = "toggle",
+                                order = 3,
+                                get = function(info) return NugEnergyDB.smoothing end,
+                                set = function(info, v)
+                                    NugEnergyDB.smoothing = not NugEnergyDB.smoothing
+                                    NugEnergy:UpdateBarEffects()
                                 end
                             },
                         },
