@@ -98,6 +98,7 @@ local defaults = {
     enableClassicTicker = true,
     spenderFeedback = not isClassic,
     smoothing = true,
+    smoothingSpeed = 6, -- 1 - 8
 
     width = 100,
     height = 30,
@@ -1219,6 +1220,7 @@ function NugEnergy:UpdateBarEffects()
         f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
         f.smoothTicker:Show()
         f.smoothTicker.parent = f
+        local animationSpeed = 1 + 8 - NugEnergyDB.smoothingSpeed
         f.smoothTicker:SetScript("OnUpdate", function(self)
             local value = self.smoothTargetValue
             local bar = self.parent
@@ -1227,7 +1229,7 @@ function NugEnergy:UpdateBarEffects()
 
             local threshold = self.threshold
 
-            local new = cur + (value-cur)/6
+            local new = cur + (value-cur)/animationSpeed
             bar:SetValueWithoutSmoothing(new)
 
             if cur == value or math_abs(new - value) < threshold then
@@ -1627,6 +1629,7 @@ function NugEnergy:CreateGUI()
                                 name = L"Spent / Ticker Fade",
                                 desc = L"Fade effect after each tick or when spending",
                                 type = "toggle",
+                                width = 3,
                                 order = 2,
                                 get = function(info) return NugEnergyDB.spenderFeedback end,
                                 set = function(info, v)
@@ -1644,6 +1647,21 @@ function NugEnergy:CreateGUI()
                                     NugEnergyDB.smoothing = not NugEnergyDB.smoothing
                                     NugEnergy:UpdateBarEffects()
                                 end
+                            },
+                            smoothingSpeed = {
+                                name = L"Animation Speed",
+                                desc = L"Higher = Faster",
+                                disabled = function() return not NugEnergyDB.smoothing end,
+                                type = "range",
+                                get = function(info) return NugEnergyDB.smoothingSpeed end,
+                                set = function(info, v)
+                                    NugEnergyDB.smoothingSpeed = tonumber(v)
+                                    NugEnergy:UpdateBarEffects()
+                                end,
+                                min = 1,
+                                max = 8,
+                                step = 0.5,
+                                order = 4,
                             },
                         },
                     },
