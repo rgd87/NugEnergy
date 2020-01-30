@@ -2085,7 +2085,8 @@ function NugEnergy:SwitchToMana()
                 self.FSRWatcher:Enable()
 
                 self:SetScript("OnUpdate",self.UpdateEnergy)
-                ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+                ClassicTickerFrame:Enable()
+                self:UpdateBarEffects()
                 switchToManaCallback()
 
                 self.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
@@ -2094,8 +2095,8 @@ function NugEnergy:SwitchToMana()
                 if self.FSRWatcher then self.FSRWatcher:Disable() end
 
                 self:SetScript("OnUpdate",self.UpdateEnergy)
-                ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
-
+                ClassicTickerFrame:Enable()
+                self:UpdateBarEffects()
                 switchToManaCallback()
             end
 end
