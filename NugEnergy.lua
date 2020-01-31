@@ -46,6 +46,7 @@ NugEnergy:RegisterEvent("PLAYER_LOGIN")
 NugEnergy:RegisterEvent("PLAYER_LOGOUT")
 local UnitPower = UnitPower
 local math_modf = math.modf
+local math_abs = math.abs
 local PowerFilter
 local PowerTypeIndex
 local ForcedToShow
@@ -87,6 +88,8 @@ local defaults = {
     hideBar = false,
     enableClassicTicker = true,
     spenderFeedback = not isClassic,
+    smoothing = true,
+    smoothingSpeed = 6, -- 1 - 8
 
     width = 100,
     height = 30,
@@ -244,6 +247,14 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
+ClassicTickerFrame.Enable = function(self)
+    self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+    self.isEnabled = true
+end
+ClassicTickerFrame.Disable = function(self)
+    self:SetScript("OnUpdate", nil)
+    self.isEnabled = false
+end
 local UNIT_MAXPOWER_ClassicTicker = function(self)
     self:SetMinMaxValues(0, 2)
 end
@@ -287,10 +298,15 @@ function NugEnergy.Initialize(self)
 
         if isClassic and NugEnergyDB.enableClassicTicker then
             GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
-            ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+            ClassicTickerFrame:Enable()
+            self:UpdateBarEffects() -- Will Disable Smoothing
             NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
+            if ClassicTickerFrame.isEnabled then
+                ClassicTickerFrame:Disable()
+                self:UpdateBarEffects()
+            end
             NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
             self:RegisterEvent("SPELLS_CHANGED")
             self:SPELLS_CHANGED()
@@ -368,9 +384,14 @@ function NugEnergy.Initialize(self)
                 if isClassic and NugEnergyDB.enableClassicTicker then
                     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
-                    ClassicTickerFrame:SetScript("OnUpdate", ClassicTickerOnUpdate)
+                    ClassicTickerFrame:Enable()
+                    self:UpdateBarEffects()
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
+                    if ClassicTickerFrame.isEnabled then
+                        ClassicTickerFrame:Disable()
+                        self:UpdateBarEffects()
+                    end
                 end
                 self:UNIT_MAXPOWER()
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -951,11 +972,6 @@ function NugEnergy:Resize()
 
         f.spentBar:SetWidth(width)
         f.spentBar:SetHeight(height)
-
-        local hmul,vmul = 1.5, 1.8
-        if isVertical then hmul, vmul = vmul, hmul end
-        f.alertFrame:SetWidth(width*hmul)
-        f.alertFrame:SetHeight(height*vmul)
     end
 end
 
@@ -1059,69 +1075,10 @@ function NugEnergy.Create(self)
     local color = NugEnergyDB.normalColor
     f:SetColor(unpack(color))
 
-    f._SetValue = f._SetValue or f.SetValue
 
-    f.SetValue = function(self, new)
-        local cur = self:GetValue()
-        local min, max = self:GetMinMaxValues()
-        local fwidth = self:GetWidth()
-        local fheight = self:GetHeight()
-        local total = max-min
+    f.OriginalSetValue = f.OriginalSetValue or f.SetValue
 
-        if spenderFeedback then
-            local diff = new - cur
-            if diff < 0 and math.abs(diff)/max > 0.1 then
-
-                local p1 = new/max
-                local pd = (-diff/max)
-
-
-                if isVertical then
-                    local lpos = p1*fheight
-                    local len = pd*fheight
-                    self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
-                    self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
-                    self.spentBar:SetHeight(len)
-                else
-                    local lpos = p1*fwidth
-                    local len = pd*fwidth
-                    self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
-                    self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
-                    self.spentBar:SetWidth(len)
-                end
-                if self.trail:IsPlaying() then self.trail:Stop() end
-                self.trail:Play()
-                self.spentBar.currentValue = cur
-            end
-        end
-
-        -- spark
-        local p = 0
-        if total > 0 then
-            p = (new-min)/(max-min)
-            if p > 1 then
-                p = 1
-            end
-            if p <= 0.07 then -- hide spark when it's close to left border
-                p = p - 0.2
-                if p < 0 then p = 0 end
-                local a = p*20
-                self.spark:SetAlpha(a)
-            -- if p > 0.95 then
-            --     local a = (1-p)*20
-            --     self.spark:SetAlpha(a)
-            else
-                self.spark:SetAlpha(1)
-            end
-        end
-        if isVertical then
-            self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
-        else
-            self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
-        end
-
-        return self:_SetValue(new)
-    end
+    self:UpdateBarEffects()
 
 
     local trail = spentBar:CreateAnimationGroup()
@@ -1172,17 +1129,17 @@ function NugEnergy.Create(self)
     -- a1:SetDuration(0.2)
     -- a1:SetOrder(1)
 
-    local at = f:CreateTexture(nil,"BACKGROUND", nil, -1)
-    at:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
-    at:SetVertexColor(unpack(color))
-    at:SetTexCoord(0.00781250,0.50781250,0.27734375,0.52734375)
-    --at:SetTexture([[Interface\AchievementFrame\UI-Achievement-IconFrame]])
-    --at:SetTexCoord(0,0.5625,0,0.5625)
-    local hmul,vmul = 1.5, 1.8
-    if isVertical then hmul, vmul = vmul, hmul end
-    at:SetWidth(width*hmul)
-    at:SetHeight(height*vmul)
-    at:SetPoint("CENTER",self,"CENTER",0,0)
+    local at = CreateFrame("Frame", nil, f)
+    local border_backdrop = {
+        edgeFile = "Interface\\Addons\\NugEnergy\\glow", tileEdge = true, edgeSize = 16,
+        -- insets = {left = -16, right = -16, top = -16, bottom = -16},
+    }
+    at:SetBackdrop(border_backdrop)
+    at:SetSize(64, 64)
+    at:SetFrameStrata("BACKGROUND")
+    at:SetBackdropBorderColor(1,0,0)
+    at:SetPoint("TOPLEFT", -16, 16)
+    at:SetPoint("BOTTOMRIGHT", 16, -16)
     at:SetAlpha(0)
     f.alertFrame = at
 
@@ -1286,6 +1243,131 @@ function NugEnergy.Create(self)
         _,_, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y = self:GetPoint(1)
     end)
 end
+
+function NugEnergy:UpdateBarEffects()
+    local f = self
+
+    f.SetValue = f.OriginalSetValue
+
+    if true then
+        f.SetValueWithoutSpark = f.SetValue
+        -- Spark Layer
+        f.SetValue = function(self, new)
+            local cur = self:GetValue()
+            local min, max = self:GetMinMaxValues()
+            local fwidth = self:GetWidth()
+            local fheight = self:GetHeight()
+            local total = max-min
+
+            -- spark
+            local p = 0
+            if total > 0 then
+                p = (new-min)/(max-min)
+                if p > 1 then
+                    p = 1
+                end
+                if p <= 0.07 then -- hide spark when it's close to left border
+                    p = p - 0.2
+                    if p < 0 then p = 0 end
+                    local a = p*20
+                    self.spark:SetAlpha(a)
+                -- if p > 0.95 then
+                --     local a = (1-p)*20
+                --     self.spark:SetAlpha(a)
+                else
+                    self.spark:SetAlpha(1)
+                end
+            end
+            if isVertical then
+                self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
+            else
+                self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
+            end
+            return self:SetValueWithoutSpark(new)
+        end
+    end
+
+    if NugEnergyDB.smoothing and not ClassicTickerFrame.isEnabled then
+        f.SetValueWithoutSmoothing = f.SetValue
+
+        f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
+        f.smoothTicker:Show()
+        f.smoothTicker.parent = f
+        local animationSpeed = 1 + 8 - NugEnergyDB.smoothingSpeed
+        f.smoothTicker:SetScript("OnUpdate", function(self)
+            local value = self.smoothTargetValue
+            local bar = self.parent
+            local cur = bar:GetValue()
+            if not value or cur == value then return end
+
+            local threshold = self.threshold
+
+            local new = cur + (value-cur)/animationSpeed
+            bar:SetValueWithoutSmoothing(new)
+
+            if cur == value or math_abs(new - value) < threshold then
+                bar:SetValueWithoutSmoothing(value)
+                self.smoothTargetValue = nil
+            end
+        end)
+
+        f.SetValue = function(self, new)
+            self.smoothTicker.smoothTargetValue = new
+        end
+
+        f._SetMinMaxValues = f._SetMinMaxValues or f.SetMinMaxValues
+
+        f.SetMinMaxValues = function(self, min, max)
+            local range = max - min
+            self.smoothTicker.threshold = range/2000
+            self:_SetMinMaxValues(min, max)
+        end
+    else
+        if f.smoothTicker then f.smoothTicker:Hide() end
+    end
+
+    if NugEnergyDB.spenderFeedback then
+        f.SetValueWithoutSpenderFeedback = f.SetValue
+        f.SetValue = function(self, new)
+            local cur = self:GetValue()
+            local min, max = self:GetMinMaxValues()
+            local fwidth = self:GetWidth()
+            local fheight = self:GetHeight()
+            local total = max-min
+
+            if spenderFeedback then
+                local diff = new - cur
+                if diff < 0 and math.abs(diff)/max > 0.1 then
+
+                    local p1 = new/max
+                    local pd = (-diff/max)
+
+
+                    if isVertical then
+                        local lpos = p1*fheight
+                        local len = pd*fheight
+                        self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
+                        self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
+                        self.spentBar:SetHeight(len)
+                    else
+                        local lpos = p1*fwidth
+                        local len = pd*fwidth
+                        self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
+                        self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
+                        self.spentBar:SetWidth(len)
+                    end
+                    if self.trail:IsPlaying() then self.trail:Stop() end
+                    self.trail:Play()
+                    self.spentBar.currentValue = cur
+                end
+            end
+
+            return self:SetValueWithoutSpenderFeedback(new)
+        end
+    end
+end
+
+
 
 local ParseOpts = function(str)
     local fields = {}
@@ -1608,7 +1690,7 @@ function NugEnergy:CreateGUI()
                             },
                         },
                     },
-                    spenderFeedback = {
+                    ColorByPowerType = {
                         name = L"Color by Power Type",
                         type = "toggle",
                         order = 1.1,
@@ -1617,6 +1699,131 @@ function NugEnergy:CreateGUI()
                             NugEnergyDB.enableColorByPowerType = not NugEnergyDB.enableColorByPowerType
                             NugEnergy:SetNormalColor()
                         end
+                    },
+                    customColorGroup = {
+                        type = "group",
+                        name = "Custom Power Colors",
+                        disabled = function() return not NugEnergyDB.enableColorByPowerType end,
+                        order = 1.2,
+                        args = {
+                            Energy = {
+                                name = L"Energy",
+                                type = 'color',
+                                order = 1,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["ENERGY"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["ENERGY"] = {r,g,b}
+                                end,
+                            },
+                            Focus = {
+                                name = L"Focus",
+                                type = 'color',
+                                order = 2,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["FOCUS"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["FOCUS"] = {r,g,b}
+                                end,
+                            },
+                            RAGE = {
+                                name = L"Rage",
+                                type = 'color',
+                                order = 3,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["RAGE"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["RAGE"] = {r,g,b}
+                                end,
+                            },
+                            RUNIC_POWER = {
+                                name = L"Runic Power",
+                                type = 'color',
+                                order = 4,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["RUNIC_POWER"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["RUNIC_POWER"] = {r,g,b}
+                                end,
+                            },
+                            LUNAR_POWER = {
+                                name = L"Lunar Power",
+                                type = 'color',
+                                order = 5,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["LUNAR_POWER"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["LUNAR_POWER"] = {r,g,b}
+                                end,
+                            },
+                            FURY = {
+                                name = L"Fury",
+                                type = 'color',
+                                order = 6,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["FURY"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["FURY"] = {r,g,b}
+                                end,
+                            },
+                            INSANITY = {
+                                name = L"Insanity",
+                                type = 'color',
+                                order = 7,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["INSANITY"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["INSANITY"] = {r,g,b}
+                                end,
+                            },
+                            PAIN = {
+                                name = L"Pain",
+                                type = 'color',
+                                order = 8,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["PAIN"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["PAIN"] = {r,g,b}
+                                end,
+                            },
+                            MAELSTROM = {
+                                name = L"Maelstrom",
+                                type = 'color',
+                                order = 9,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["MAELSTROM"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["MAELSTROM"] = {r,g,b}
+                                end,
+                            },
+                        }
                     },
                     fadeGroup = {
                         type = "group",
@@ -1642,12 +1849,39 @@ function NugEnergy:CreateGUI()
                                 name = L"Spent / Ticker Fade",
                                 desc = L"Fade effect after each tick or when spending",
                                 type = "toggle",
+                                width = 3,
                                 order = 2,
                                 get = function(info) return NugEnergyDB.spenderFeedback end,
                                 set = function(info, v)
                                     NugEnergyDB.spenderFeedback = not NugEnergyDB.spenderFeedback
                                     NugEnergy:UpdateUpvalues()
+                                    NugEnergy:UpdateBarEffects()
                                 end
+                            },
+                            smoothing = {
+                                name = L"Smoothing",
+                                type = "toggle",
+                                order = 3,
+                                get = function(info) return NugEnergyDB.smoothing end,
+                                set = function(info, v)
+                                    NugEnergyDB.smoothing = not NugEnergyDB.smoothing
+                                    NugEnergy:UpdateBarEffects()
+                                end
+                            },
+                            smoothingSpeed = {
+                                name = L"Animation Speed",
+                                desc = L"Higher = Faster",
+                                disabled = function() return not NugEnergyDB.smoothing end,
+                                type = "range",
+                                get = function(info) return NugEnergyDB.smoothingSpeed end,
+                                set = function(info, v)
+                                    NugEnergyDB.smoothingSpeed = tonumber(v)
+                                    NugEnergy:UpdateBarEffects()
+                                end,
+                                min = 1,
+                                max = 8,
+                                step = 0.5,
+                                order = 4,
                             },
                         },
                     },
@@ -1677,7 +1911,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:Resize()
                                 end,
                                 min = 30,
-                                max = 300,
+                                max = 600,
                                 step = 1,
                                 order = 7,
                             },
@@ -1690,7 +1924,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:Resize()
                                 end,
                                 min = 10,
-                                max = 60,
+                                max = 100,
                                 step = 1,
                                 order = 8,
                             },
@@ -1744,7 +1978,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:ResizeText()
                                 end,
                                 min = 5,
-                                max = 50,
+                                max = 80,
                                 step = 1,
                             },
                             hideText = {

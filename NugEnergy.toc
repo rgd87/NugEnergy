@@ -1,4 +1,4 @@
-## Interface: 80205
+## Interface: 80300
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
@@ -19,3 +19,4 @@ Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 NugEnergy.lua
 
 Locales\ruRU.lua
+Locales\zhTW.lua
