@@ -1698,6 +1698,131 @@ function NugEnergy:CreateGUI()
                             NugEnergy:SetNormalColor()
                         end
                     },
+                    customColorGroup = {
+                        type = "group",
+                        name = "Custom Power Colors",
+                        disabled = function() return not NugEnergyDB.enableColorByPowerType end,
+                        order = 1.2,
+                        args = {
+                            Energy = {
+                                name = L"Energy",
+                                type = 'color',
+                                order = 1,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["ENERGY"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["ENERGY"] = {r,g,b}
+                                end,
+                            },
+                            Focus = {
+                                name = L"Focus",
+                                type = 'color',
+                                order = 2,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["FOCUS"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["FOCUS"] = {r,g,b}
+                                end,
+                            },
+                            RAGE = {
+                                name = L"Rage",
+                                type = 'color',
+                                order = 3,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["RAGE"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["RAGE"] = {r,g,b}
+                                end,
+                            },
+                            RUNIC_POWER = {
+                                name = L"Runic Power",
+                                type = 'color',
+                                order = 4,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["RUNIC_POWER"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["RUNIC_POWER"] = {r,g,b}
+                                end,
+                            },
+                            LUNAR_POWER = {
+                                name = L"Lunar Power",
+                                type = 'color',
+                                order = 5,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["LUNAR_POWER"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["LUNAR_POWER"] = {r,g,b}
+                                end,
+                            },
+                            FURY = {
+                                name = L"Fury",
+                                type = 'color',
+                                order = 6,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["FURY"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["FURY"] = {r,g,b}
+                                end,
+                            },
+                            INSANITY = {
+                                name = L"Insanity",
+                                type = 'color',
+                                order = 7,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["INSANITY"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["INSANITY"] = {r,g,b}
+                                end,
+                            },
+                            PAIN = {
+                                name = L"Pain",
+                                type = 'color',
+                                order = 8,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["PAIN"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["PAIN"] = {r,g,b}
+                                end,
+                            },
+                            MAELSTROM = {
+                                name = L"Maelstrom",
+                                type = 'color',
+                                order = 9,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["MAELSTROM"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["MAELSTROM"] = {r,g,b}
+                                end,
+                            },
+                        }
+                    },
                     fadeGroup = {
                         type = "group",
                         name = "",
