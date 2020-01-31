@@ -970,11 +970,6 @@ function NugEnergy:Resize()
 
         f.spentBar:SetWidth(width)
         f.spentBar:SetHeight(height)
-
-        local hmul,vmul = 1.5, 1.8
-        if isVertical then hmul, vmul = vmul, hmul end
-        f.alertFrame:SetWidth(width*hmul)
-        f.alertFrame:SetHeight(height*vmul)
     end
 end
 
@@ -1132,17 +1127,17 @@ function NugEnergy.Create(self)
     -- a1:SetDuration(0.2)
     -- a1:SetOrder(1)
 
-    local at = f:CreateTexture(nil,"BACKGROUND", nil, -1)
-    at:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
-    at:SetVertexColor(unpack(color))
-    at:SetTexCoord(0.00781250,0.50781250,0.27734375,0.52734375)
-    --at:SetTexture([[Interface\AchievementFrame\UI-Achievement-IconFrame]])
-    --at:SetTexCoord(0,0.5625,0,0.5625)
-    local hmul,vmul = 1.5, 1.8
-    if isVertical then hmul, vmul = vmul, hmul end
-    at:SetWidth(width*hmul)
-    at:SetHeight(height*vmul)
-    at:SetPoint("CENTER",self,"CENTER",0,0)
+    local at = CreateFrame("Frame", nil, f)
+    local border_backdrop = {
+        edgeFile = "Interface\\Addons\\NugEnergy\\glow", tileEdge = true, edgeSize = 16,
+        -- insets = {left = -16, right = -16, top = -16, bottom = -16},
+    }
+    at:SetBackdrop(border_backdrop)
+    at:SetSize(64, 64)
+    at:SetFrameStrata("BACKGROUND")
+    at:SetBackdropBorderColor(1,0,0)
+    at:SetPoint("TOPLEFT", -16, 16)
+    at:SetPoint("BOTTOMRIGHT", 16, -16)
     at:SetAlpha(0)
     f.alertFrame = at
 
