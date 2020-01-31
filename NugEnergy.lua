@@ -54,6 +54,7 @@ local GetPowerMax = UnitPowerMax
 
 local execute = false
 local execute_range = nil
+local upvalueInCombat = nil
 
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
@@ -400,7 +401,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy       
+                -- self.UpdateEnergy = self.__UpdateEnergy
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
@@ -608,7 +609,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
     p2 = p2 or p
     self.text:SetText(p2)
     if not onlyText then
-        if shine then
+        if shine and upvalueInCombat then
             -- self.glow:Show()
             if not self.glow:IsPlaying() then self.glow:Play() end
         else
@@ -738,6 +739,7 @@ end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     local inCombat = UnitAffectingCombat("player")
+    upvalueInCombat = inCombat
     if (inCombat or
         ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
         ForcedToShow)
