@@ -560,7 +560,7 @@ function NugEnergy.Initialize(self)
             else
                 execute_range = nil
                 execute = nil
-                GetPower = RageBarGetPower(30, 10, nil, nil)
+                GetPower = RageBarGetPower(30, 10, 30, nil)
                 self:UnregisterEvent("UNIT_HEALTH")
                 self:UnregisterEvent("PLAYER_TARGET_CHANGED")
             end
@@ -1633,6 +1633,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.normalColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                                 order = 1,
                             },
@@ -1646,6 +1647,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.altColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             customcolor3 = {
@@ -1659,6 +1661,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.maxColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             customcolor4 = {
@@ -1672,6 +1675,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.lowColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             textColor = {
@@ -1717,6 +1721,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["ENERGY"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             Focus = {
@@ -1730,6 +1735,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["FOCUS"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             RAGE = {
@@ -1743,6 +1749,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["RAGE"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             RUNIC_POWER = {
@@ -1756,6 +1763,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["RUNIC_POWER"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             LUNAR_POWER = {
@@ -1769,6 +1777,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["LUNAR_POWER"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             FURY = {
@@ -1782,6 +1791,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["FURY"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             INSANITY = {
@@ -1795,6 +1805,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["INSANITY"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             PAIN = {
@@ -1808,6 +1819,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["PAIN"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             MAELSTROM = {
@@ -1821,6 +1833,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["MAELSTROM"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                         }
