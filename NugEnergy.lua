@@ -59,6 +59,7 @@ local GetUnitSpeed = GetUnitSpeed
 
 local execute = false
 local execute_range = nil
+local upvalueInCombat = nil
 
 local tickerEnabled
 local twEnabled
@@ -97,6 +98,7 @@ local defaults = {
     hideBar = false,
     enableClassicTicker = true,
     spenderFeedback = not isClassic,
+    borderType = "2PX",
     smoothing = true,
     smoothingSpeed = 6, -- 1 - 8
 
@@ -172,10 +174,22 @@ local function RemoveDefaults(t, defaults)
     return t
 end
 
+local pmult = 1
+local function pixelperfect(size)
+    return floor(size/pmult + 0.5)*pmult
+end
+
+
 
 function NugEnergy.PLAYER_LOGIN(self,event)
     NugEnergyDB = NugEnergyDB or {}
     SetupDefaults(NugEnergyDB, defaults)
+
+    local res = GetCVar("gxWindowedResolution")
+    if res then
+        local w,h = string.match(res, "(%d+)x(%d+)")
+        pmult = (768/h) / UIParent:GetScale()
+    end
 
     NugEnergyDB_Character = NugEnergyDB_Character or {}
     NugEnergyDB_Character.marks = NugEnergyDB_Character.marks or { [0] = {}, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
@@ -523,7 +537,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
     p2 = p2 or p
     self.text:SetText(p2)
     if not onlyText then
-        if shine then
+        if shine and upvalueInCombat then
             -- self.glow:Show()
             if not self.glow:IsPlaying() then self.glow:Play() end
         else
@@ -683,6 +697,7 @@ end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     local inCombat = UnitAffectingCombat("player")
+    upvalueInCombat = inCombat
     if (inCombat or
         ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
         ForcedToShow)
@@ -927,6 +942,66 @@ local SparkSetValue = function(self, v)
     return self:NormalSetValue(v)
 end
 
+function NugEnergy:UpdateFrameBorder()
+    local borderType = NugEnergyDB.borderType
+
+    if self.border then self.border:Hide() end
+    if self.backdrop then self.backdrop:Hide() end
+
+    if borderType == "2PX" then
+        self.backdrop = self.backdrop or self:CreateTexture(nil, "BACKGROUND", nil, -2)
+        local backdrop = self.backdrop
+        local offset = pixelperfect(2)
+        backdrop:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+        backdrop:SetVertexColor(0,0,0, 0.5)
+        backdrop:SetPoint("TOPLEFT", -offset, offset)
+        backdrop:SetPoint("BOTTOMRIGHT", offset, -offset)
+        backdrop:Show()
+
+    elseif borderType == "1PX" then
+        self.backdrop = self.backdrop or self:CreateTexture(nil, "BACKGROUND", nil, -2)
+        local backdrop = self.backdrop
+        local offset = pixelperfect(1)
+        backdrop:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+        backdrop:SetVertexColor(0,0,0, 1)
+        backdrop:SetPoint("TOPLEFT", -offset, offset)
+        backdrop:SetPoint("BOTTOMRIGHT", offset, -offset)
+        backdrop:Show()
+
+    elseif borderType == "TOOLTIP" then
+        self.border = self.border or CreateFrame("Frame", nil, self)
+        local border = self.border
+        border:SetPoint("TOPLEFT", -3, 3)
+        border:SetPoint("BOTTOMRIGHT", 3, -3)
+        border:SetBackdrop({
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 16,
+            -- insets = {left = -5, right = -5, top = -5, bottom = -5},
+        })
+        border:SetBackdropBorderColor(0.55,0.55,0.55)
+        border:Show()
+    elseif borderType == "STATUSBAR" then
+        self.border = self.border or CreateFrame("Frame", nil, self)
+        local border = self.border
+        border:SetPoint("TOPLEFT", -2, 3)
+        border:SetPoint("BOTTOMRIGHT", 2, -3)
+        border:SetBackdrop({
+            edgeFile = "Interface\\AddOns\\NugEnergy\\border_statusbar", edgeSize = 8, tileEdge = false,
+        })
+        border:SetBackdropBorderColor(1,1,1)
+        border:Show()
+    elseif borderType == "3PX" then
+        self.border = self.border or CreateFrame("Frame", nil, self)
+        local border = self.border
+        border:SetPoint("TOPLEFT", -2, 2)
+        border:SetPoint("BOTTOMRIGHT", 2, -2)
+        border:SetBackdrop({
+            edgeFile = "Interface\\AddOns\\NugEnergy\\border_3px", edgeSize = 8, tileEdge = false,
+        })
+        border:SetBackdropBorderColor(0.4,0.4,0.4)
+        border:Show()
+    end
+end
+
 function NugEnergy.Create(self)
     local f = self
     local width = NugEnergyDB.width
@@ -939,12 +1014,9 @@ function NugEnergy.Create(self)
     f:SetHeight(height)
 
     if not onlyText then
-    local backdrop = {
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 0,
-        insets = {left = -2, right = -2, top = -2, bottom = -2},
-    }
-    f:SetBackdrop(backdrop)
-    f:SetBackdropColor(0,0,0,0.5)
+
+    self:UpdateFrameBorder()
+
     local tex = getStatusbar()
     f:SetStatusBarTexture(tex)
     -- f:GetStatusBarTexture():SetDrawLayer("ARTWORK", 3)
@@ -1520,6 +1592,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.normalColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                                 order = 1,
                             },
@@ -1533,6 +1606,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.altColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             customcolor3 = {
@@ -1546,6 +1620,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.maxColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             customcolor4 = {
@@ -1559,6 +1634,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.lowColor = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             textColor = {
@@ -1617,6 +1693,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["ENERGY"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             RAGE = {
@@ -1630,6 +1707,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["RAGE"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                             MANA = {
@@ -1643,6 +1721,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["MANA"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
                                 end,
                             },
                         }
@@ -1666,6 +1745,23 @@ function NugEnergy:CreateGUI()
                                 max = 1,
                                 step = 0.05,
                                 order = 1,
+                            },
+                            borderType = {
+                                type = "select",
+                                name = L"Border Type",
+                                order = 1.4,
+                                get = function(info) return NugEnergyDB.borderType end,
+                                set = function(info, value)
+                                    NugEnergyDB.borderType = value
+                                    NugEnergy:UpdateFrameBorder()
+                                end,
+                                values = {
+                                    ["1PX"] = "1px Border",
+                                    ["2PX"] = "2px Border",
+                                    ["3PX"] = "3px Border",
+                                    ["TOOLTIP"] = "Tooltip Border",
+                                    ["STATUSBAR"] = "Status Border",
+                                },
                             },
                             spenderFeedback = {
                                 name = L"Spent / Ticker Fade",
