@@ -318,15 +318,50 @@ local ClassicTickerColorUpdate = function(self, tp, prevColor)
     end
 end
 
+local GetMP5FromGear = function(unit)
+    local mp5 = 0;
+    for i = 1, 18 do
+        local itemLink = GetInventoryItemLink(unit, i);
+        if itemLink then
+            local stats = GetItemStats(itemLink);
+            if stats then
+                -- This returns (mp5 - 1)
+                local statMP5 = stats["ITEM_MOD_POWER_REGEN0_SHORT"];
+                if (statMP5) then
+                    mp5 = mp5 + statMP5 + 1;
+                end
+            end
+        end
+    end
+    return mp5;
+end
+
 local ClassicTickerFrame = CreateFrame("Frame")
 local ClassicTickerOnUpdate = function(self)
     local currentEnergy = UnitPower("player", PowerTypeIndex)
     local now = GetTime()
-    if currentEnergy > lastEnergyValue or now >= lastEnergyTickTime + 2 then
+    local possibleTick = false
+    if currentEnergy > lastEnergyValue then
+        -- Mana tick
+        if PowerTypeIndex == 0 then
+            local replenished = currentEnergy - lastEnergyValue
+            local baseManaPerSec, castingManaPerSec = GetManaRegen()
+            manaPerTick = baseManaPerSec * 2 + GetMP5FromGear("player") * 0.4
+            deviation = currentEnergy - lastEnergyValue - manaPerTick
+            -- Actual mana tick is always integer so there are deviations
+            if (deviation > -1.5) and (deviation < 1.5) then
+                possibleTick = true
+            end
+        end
+        lastEnergyValue = currentEnergy
+    end
+    if now >= lastEnergyTickTime + 2 then
+        possibleTick = true
+    end
+    if possibleTick then
         lastEnergyTickTime = now
         heartbeatPlayed = false
     end
-    lastEnergyValue = currentEnergy
 end
 ClassicTickerFrame.Enable = function(self)
     self:SetScript("OnUpdate", ClassicTickerOnUpdate)
