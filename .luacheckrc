@@ -123,5 +123,5 @@ globals = {
     "InterfaceOptionsFrame_OpenToCategory",
     "PowerBarColor",
     "GetCVar",
-
+    "GetManaRegen",
 }
