@@ -90,6 +90,7 @@ local defaults = {
     mana = false,
     manaPriest = false,
     manaDruid = false,
+    druidPowershifting = false,
     enableFSR = true,
     -- powerTypeColors = true,
     -- focusColor = true
@@ -531,7 +532,7 @@ function NugEnergy.Initialize(self)
                 if NugEnergyDB.manaDruid then
                     self:SwitchToMana()
                 else
-                    if PowerFilter == "ENERGY" then
+                    if PowerFilter == "ENERGY" and NugEnergyDB.druidPowershifting then
                         if not energyInHumanFormTimer then
                             switchFromEnergyTimestamp = GetTime()
                             energyInHumanFormTimer = C_Timer.NewTimer(10, function()
@@ -2043,6 +2044,17 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.rage end,
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
+                            druidPowershifting = {
+                                name = L"Druid Powershifting",
+                                desc = "For DPS Ferals",
+                                type = "toggle",
+                                order = 2.5,
+                                get = function(info) return NugEnergyDB.druidPowershifting end,
+                                set = function(info, v)
+                                    NugEnergyDB.druidPowershifting = not NugEnergyDB.druidPowershifting
+                                    NugEnergyDB.manaDruid = false
+                                end
+                            },
                             druidMana = {
                                 name = L"Druid Mana",
                                 type = "toggle",
@@ -2050,6 +2062,7 @@ function NugEnergy:CreateGUI()
                                 get = function(info) return NugEnergyDB.manaDruid end,
                                 set = function(info, v)
                                     NugEnergyDB.manaDruid = not NugEnergyDB.manaDruid
+                                    NugEnergyDB.druidPowershifting = false
                                     NugEnergy:Initialize()
                                 end
                             },
