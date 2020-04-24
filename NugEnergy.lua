@@ -542,6 +542,8 @@ function NugEnergy.Initialize(self)
                             disable()
                         end
                         return
+                    else
+                        disable()
                     end
                 end
             else
