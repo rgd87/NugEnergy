@@ -124,4 +124,6 @@ globals = {
     "PowerBarColor",
     "GetCVar",
     "GetManaRegen",
+    "GetInventoryItemLink",
+    "GetItemStats",
 }
