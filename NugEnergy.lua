@@ -89,7 +89,7 @@ local defaults = {
     energy = true,
     mana = false,
     manaPriest = false,
-    manaDruid = true,
+    manaDruid = false,
     enableFSR = true,
     -- powerTypeColors = true,
     -- focusColor = true
@@ -457,6 +457,18 @@ function NugEnergy.Initialize(self)
     elseif class == "DRUID" then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self:RegisterEvent("UPDATE_STEALTH")
+        local switchFromEnergyTimestamp = GetTime()
+        local energyInHumanFormTimer
+
+        local disable = function()
+            PowerFilter = nil
+            PowerTypeIndex = nil
+            self:UnregisterEvent("UNIT_POWER_UPDATE")
+            self:UnregisterEvent("UNIT_MAXPOWER")
+            self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+            self:SetScript("OnUpdate", nil)
+            self:UPDATE_STEALTH()
+        end
 
         self:SetScript("OnUpdate",self.UpdateEnergy)
         self.UNIT_DISPLAYPOWER = function(self)
@@ -490,6 +502,10 @@ function NugEnergy.Initialize(self)
                         self:UpdateBarEffects()
                     end
                 end
+                if energyInHumanFormTimer then
+                    energyInHumanFormTimer:Cancel()
+                    energyInHumanFormTimer = nil
+                end
                 self:UNIT_MAXPOWER()
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UPDATE_STEALTH()
@@ -502,23 +518,34 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy
+                if energyInHumanFormTimer then
+                    energyInHumanFormTimer:Cancel()
+                    energyInHumanFormTimer = nil
+                end
                 GetPower = RageBarGetPower(30, 10, nil, nil)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
-            elseif newPowerType =="MANA" and isClassic and NugEnergyDB.manaDruid then
-                self:SwitchToMana()
+            elseif newPowerType =="MANA" and isClassic then
+                if NugEnergyDB.manaDruid then
+                    self:SwitchToMana()
+                else
+                    if PowerFilter == "ENERGY" then
+                        if not energyInHumanFormTimer then
+                            switchFromEnergyTimestamp = GetTime()
+                            energyInHumanFormTimer = C_Timer.NewTimer(10, function()
+                                NugEnergy:UNIT_DISPLAYPOWER()
+                            end)
+                        end
+                        if GetTime() - switchFromEnergyTimestamp > 9 then
+                            disable()
+                        end
+                        return
+                    end
+                end
             else
-                PowerFilter = nil
-                PowerTypeIndex = nil
-                self:UnregisterEvent("UNIT_POWER_UPDATE")
-                self:UnregisterEvent("UNIT_MAXPOWER")
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate", nil)
-                self:UPDATE_STEALTH()
+                disable()
             end
             self:UpdateEnergy()
         end
