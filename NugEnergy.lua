@@ -1273,7 +1273,11 @@ function NugEnergy.Create(self)
 
     end -- endif not onlyText
 
-    local text = f:CreateFontString(nil, "OVERLAY")
+    local pf = CreateFrame("Frame", nil, f)
+    pf:SetFrameLevel(2)
+    pf:SetAllPoints(f)
+
+    local text = pf:CreateFontString(nil, "OVERLAY")
     local font = getFont()
     local fontSize = NugEnergyDB.fontSize
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
