@@ -346,6 +346,8 @@ ClassicTickerFrame:SetScript("OnEvent", function()
     manaPerTick = baseManaPerSec * 2 + GetMP5FromGear("player") * 0.4
 end)
 
+local maxEnergy = 100
+local tickFiltering = true
 local ClassicTickerOnUpdate = function(self)
     local currentEnergy = UnitPower("player", PowerTypeIndex)
     local now = GetTime()
@@ -360,7 +362,17 @@ local ClassicTickerOnUpdate = function(self)
                 possibleTick = true
             end
         else
-            possibleTick = true
+            if tickFiltering then
+                local diff = currentEnergy - lastEnergyValue
+                if  (diff > 18 and diff < 22) or -- normal tick
+                    (diff > 38 and diff < 42) or -- adr rush
+                    (diff < 42 and currentEnergy == maxEnergy) -- including tick to cap, but excluding thistle tea
+                then
+                    possibleTick = true
+                end
+            else
+                possibleTick = true
+            end
         end
     end
     if now >= lastEnergyTickTime + 2 then
@@ -381,6 +393,7 @@ ClassicTickerFrame.Disable = function(self)
     self.isEnabled = false
 end
 local UNIT_MAXPOWER_ClassicTicker = function(self)
+    maxEnergy = UnitPowerMax("player", PowerTypeIndex)
     self:SetMinMaxValues(0, 2)
 end
 

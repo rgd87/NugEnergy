@@ -1,4 +1,4 @@
-## Interface: 11303
+## Interface: 11305
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
