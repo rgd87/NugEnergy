@@ -293,7 +293,7 @@ function NugEnergy.Initialize(self)
         PowerTypeIndex = Enum.PowerType.Energy
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
-        self:SetScript("OnUpdate",self.UpdateEnergy)
+        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
 
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
@@ -409,7 +409,7 @@ function NugEnergy.Initialize(self)
                 self:UNIT_MAXPOWER()
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UPDATE_STEALTH()
-                self:SetScript("OnUpdate",self.UpdateEnergy)
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
                 PowerTypeIndex = Enum.PowerType.Rage
@@ -422,7 +422,7 @@ function NugEnergy.Initialize(self)
                 -- self.UpdateEnergy = self.__UpdateEnergy
                 GetPower = RageBarGetPower(30, 10, 45)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate", nil)
+                self:UnregisterEvent("UNIT_POWER_FREQUENT")
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
             elseif GetSpecialization() == 1 and NugEnergyDB.balance then
@@ -437,7 +437,6 @@ function NugEnergy.Initialize(self)
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
             else
@@ -446,7 +445,6 @@ function NugEnergy.Initialize(self)
                 self:UnregisterEvent("UNIT_POWER_UPDATE")
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
             end
             self:UpdateEnergy()
@@ -461,8 +459,6 @@ function NugEnergy.Initialize(self)
         end
 
     elseif class == "DEMONHUNTER" and NugEnergyDB.fury then
-        self.UNIT_POWER_FREQUENT = self.UNIT_POWER_UPDATE
-
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self.UNIT_DISPLAYPOWER = function(self)
             self:RegisterEvent("UNIT_POWER_FREQUENT")
@@ -484,7 +480,7 @@ function NugEnergy.Initialize(self)
 
     elseif class == "MONK" and NugEnergyDB.energy then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
-        self:SetScript("OnUpdate",self.UpdateEnergy)
+        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
@@ -509,12 +505,11 @@ function NugEnergy.Initialize(self)
                 end
 
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate",self.UpdateEnergy)
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
             else
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
                 PowerFilter = nil
                 PowerTypeIndex = nil
-                self:SetScript("OnUpdate", nil)
                 self:Hide()
             end
             self:UPDATE_STEALTH()
@@ -585,7 +580,7 @@ function NugEnergy.Initialize(self)
         PowerTypeIndex = Enum.PowerType.Focus
         self:SetNormalColor()
         shouldBeFull = true
-        self:SetScript("OnUpdate",self.UpdateEnergy)
+        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
         GetPower = GetPowerBy5
 
     elseif class == "SHAMAN" and NugEnergyDB.maelstrom then
@@ -609,7 +604,6 @@ function NugEnergy.Initialize(self)
                 self:UnregisterEvent("UNIT_POWER_UPDATE")
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate", nil)
                 self:UPDATE_STEALTH()
             end
         end
@@ -625,7 +619,6 @@ function NugEnergy.Initialize(self)
     self:UpdateEnergy()
     return true
 end
-
 
 
 function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
