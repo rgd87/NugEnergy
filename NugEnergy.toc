@@ -20,3 +20,4 @@ NugEnergy.lua
 
 Locales\ruRU.lua
 Locales\zhTW.lua
+Locales\zhCN.lua
