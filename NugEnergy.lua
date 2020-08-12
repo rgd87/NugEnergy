@@ -331,6 +331,7 @@ function NugEnergy.Initialize(self)
     elseif class == "PRIEST" and NugEnergyDB.insanity then
         local voidform = false
         local voidformCost = 90
+        local dpCost = 50
         local InsanityBarGetPower = function(unit)
             local p = UnitPower(unit, Enum_PowerType_Insanity)
             -- local pmax = UnitPowerMax(unit)
@@ -340,7 +341,7 @@ function NugEnergy.Initialize(self)
             -- if p >= pmax-10 then state = "CAPPED" end
             -- if GetSpecialization() == 3  p < 60 pmax-10
             local capped = shine
-            return p, nil, voidform, shine, capped
+            return p, nil, voidform, shine, capped, p < dpCost
         end
         self.UNIT_AURA = function(self, event, unit)
             voidform = ( FindAura("player", 194249, "HELPFUL") ~= nil)
@@ -354,7 +355,6 @@ function NugEnergy.Initialize(self)
                 PowerFilter = "INSANITY"
                 PowerTypeIndex = Enum.PowerType.Insanity
                 self:SetNormalColor()
-                voidformCost = IsPlayerSpell(193225) and 60 or 90 -- Legacy of the Void
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterUnitEvent("UNIT_AURA", "player");
