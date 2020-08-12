@@ -1,4 +1,4 @@
-## Interface: 80300
+## Interface: 90000
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
