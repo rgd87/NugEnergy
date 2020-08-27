@@ -108,7 +108,6 @@ local defaults = {
         ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
         ["FURY"] = ColorArray(PowerBarColor["FURY"]),
         ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
-        ["PAIN"] = ColorArray(PowerBarColor["PAIN"]),
         ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
         ["MANA"] = ColorArray(PowerBarColor["MANA"]),
     },
@@ -460,24 +459,12 @@ function NugEnergy.Initialize(self)
         end
 
     elseif class == "DEMONHUNTER" and NugEnergyDB.fury then
-        self:RegisterEvent("UNIT_DISPLAYPOWER")
-        self.UNIT_DISPLAYPOWER = function(self)
-            self:RegisterEvent("UNIT_POWER_FREQUENT")
-            local newPowerType = select(2,UnitPowerType("player"))
-            if newPowerType == "FURY" then
-                GetPower = RageBarGetPower(30, 10)
-                PowerFilter = "FURY"
-                PowerTypeIndex = Enum.PowerType.Fury
-                self:SetNormalColor()
-            else
-                GetPower = RageBarGetPower(30, 10, 30)
-                PowerFilter = "PAIN"
-                PowerTypeIndex = Enum.PowerType.Pain
-                self:SetNormalColor()
-            end
-            self:UpdateEnergy()
-        end
-        self:UNIT_DISPLAYPOWER()
+        self:RegisterEvent("UNIT_POWER_FREQUENT")
+        GetPower = RageBarGetPower(30, 10)
+        PowerFilter = "FURY"
+        PowerTypeIndex = Enum.PowerType.Fury
+        self:SetNormalColor()
+        self:UpdateEnergy()
 
     elseif class == "MONK" and NugEnergyDB.energy then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
@@ -1873,20 +1860,6 @@ function NugEnergy:CreateGUI()
                                 end,
                                 set = function(info, r, g, b)
                                     NugEnergyDB.powerTypeColors["INSANITY"] = {r,g,b}
-                                    NugEnergy:SetNormalColor()
-                                end,
-                            },
-                            PAIN = {
-                                name = L"Pain",
-                                type = 'color',
-                                order = 8,
-                                width = 0.6,
-                                get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["PAIN"])
-                                    return r,g,b
-                                end,
-                                set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["PAIN"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
