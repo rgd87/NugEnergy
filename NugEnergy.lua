@@ -25,7 +25,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 LSM:Register("statusbar", "Glamour7", [[Interface\AddOns\NugEnergy\statusbar.tga]])
 LSM:Register("statusbar", "NugEnergyVertical", [[Interface\AddOns\NugEnergy\vstatusbar.tga]])
 
-LSM:Register("font", "Emblem", [[Interface\AddOns\NugEnergy\Emblem.ttf]], GetLocale() ~= "enUS" and 15)
+LSM:Register("font", "OpenSans Bold", [[Interface\AddOns\NugEnergy\OpenSans-Bold.ttf]], GetLocale() ~= "enUS" and 15)
 
 local getStatusbar = function() return LSM:Fetch("statusbar", NugEnergyDB.textureName) end
 local getFont = function() return LSM:Fetch("font", NugEnergyDB.fontName) end
@@ -120,12 +120,11 @@ local defaults = {
         ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
         ["FURY"] = ColorArray(PowerBarColor["FURY"]),
         ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
-        ["PAIN"] = ColorArray(PowerBarColor["PAIN"]),
         ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
         ["MANA"] = ColorArray(PowerBarColor["MANA"]),
     },
     textureName = "Glamour7",
-    fontName = "Emblem",
+    fontName = "OpenSans Bold",
     fontSize = 25,
     textAlign = "END",
     textOffsetX = 0,
@@ -466,7 +465,6 @@ function NugEnergy.Initialize(self)
             self:SPELLS_CHANGED()
         end
         self:UNIT_MAXPOWER()
-
 
 
     elseif class == "DRUID" then
@@ -943,7 +941,7 @@ function NugEnergy:Resize()
         text:ClearAllPoints()
         local textAlign = NugEnergyDB.textAlign
         if textAlign == "END" then
-            text:SetPoint("TOP", f, "TOP", 0+NugEnergyDB.textOffsetX, -5+NugEnergyDB.textOffsetY)
+            text:SetPoint("TOP", f, "TOP", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
             text:SetJustifyV("TOP")
         elseif textAlign == "CENTER" then
             text:SetPoint("CENTER", f, "CENTER", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
