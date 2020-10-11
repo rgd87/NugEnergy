@@ -10,6 +10,7 @@ local shouldBeFull = false
 local isFull = true
 local isVertical
 local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+local isShadowlands = select(4,GetBuildInfo()) > 90000
 local GetSpecialization = isClassic and function() end or _G.GetSpecialization
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
@@ -433,7 +434,7 @@ function NugEnergy.Initialize(self)
         twEnabled = NugEnergyDB.twEnabled
         shouldBeFull = true
         self:RegisterEvent("UPDATE_STEALTH")
-        self:SetScript("OnUpdate",self.UpdateEnergy)
+        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
 
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
@@ -523,7 +524,7 @@ function NugEnergy.Initialize(self)
                 self:UNIT_MAXPOWER()
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UPDATE_STEALTH()
-                self:SetScript("OnUpdate",self.UpdateEnergy)
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
             elseif newPowerType =="RAGE" and NugEnergyDB.rage then
                 PowerFilter = "RAGE"
                 PowerTypeIndex = Enum.PowerType.Rage
@@ -538,7 +539,6 @@ function NugEnergy.Initialize(self)
                 end
                 GetPower = RageBarGetPower(30, 10, nil, nil)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
             elseif newPowerType =="MANA" and isClassic then
@@ -1055,7 +1055,7 @@ function NugEnergy:UpdateFrameBorder()
         backdrop:Show()
 
     elseif borderType == "TOOLTIP" then
-        self.border = self.border or CreateFrame("Frame", nil, self)
+        self.border = self.border or CreateFrame("Frame", nil, self, isShadowlands and "BackdropTemplate")
         local border = self.border
         border:SetPoint("TOPLEFT", -3, 3)
         border:SetPoint("BOTTOMRIGHT", 3, -3)
@@ -1066,7 +1066,7 @@ function NugEnergy:UpdateFrameBorder()
         border:SetBackdropBorderColor(0.55,0.55,0.55)
         border:Show()
     elseif borderType == "STATUSBAR" then
-        self.border = self.border or CreateFrame("Frame", nil, self)
+        self.border = self.border or CreateFrame("Frame", nil, self, isShadowlands and "BackdropTemplate")
         local border = self.border
         border:SetPoint("TOPLEFT", -2, 3)
         border:SetPoint("BOTTOMRIGHT", 2, -3)
@@ -1076,7 +1076,7 @@ function NugEnergy:UpdateFrameBorder()
         border:SetBackdropBorderColor(1,1,1)
         border:Show()
     elseif borderType == "3PX" then
-        self.border = self.border or CreateFrame("Frame", nil, self)
+        self.border = self.border or CreateFrame("Frame", nil, self, isShadowlands and "BackdropTemplate")
         local border = self.border
         border:SetPoint("TOPLEFT", -2, 2)
         border:SetPoint("BOTTOMRIGHT", 2, -2)
@@ -1209,7 +1209,7 @@ function NugEnergy.Create(self)
     -- a1:SetDuration(0.2)
     -- a1:SetOrder(1)
 
-    local at = CreateFrame("Frame", nil, f)
+    local at = CreateFrame("Frame", nil, f, isShadowlands and "BackdropTemplate")
     local border_backdrop = {
         edgeFile = "Interface\\Addons\\NugEnergy\\glow", tileEdge = true, edgeSize = 16,
         -- insets = {left = -16, right = -16, top = -16, bottom = -16},
