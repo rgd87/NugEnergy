@@ -783,18 +783,18 @@ function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
     end
 end
 function NugEnergy.ReconfigureMarks(self)
-    local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
-    for at, frame in pairs(NugEnergy.marks) do
-        frame:Hide()
-        table.insert(free_marks, frame)
-        NugEnergy.marks[at] = nil
-        -- print("Hiding", at)
-    end
-    for at in pairs(spec_marks) do
-        -- print("Showing", at)
-        NugEnergy:CreateMark(at)
-    end
-    -- NugEnergy:RealignMarks()
+    -- local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
+    -- for at, frame in pairs(NugEnergy.marks) do
+    --     frame:Hide()
+    --     table.insert(free_marks, frame)
+    --     NugEnergy.marks[at] = nil
+    --     -- print("Hiding", at)
+    -- end
+    -- for at in pairs(spec_marks) do
+    --     -- print("Showing", at)
+    --     NugEnergy:CreateMark(at)
+    -- end
+    -- -- NugEnergy:RealignMarks()
 end
 
 
