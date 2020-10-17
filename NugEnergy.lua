@@ -580,7 +580,7 @@ function NugEnergy.Initialize(self)
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
-            if spec == 1 or spec == 2 then
+            if spec == 1 then
                 PowerFilter = "MAELSTROM"
                 PowerTypeIndex = Enum.PowerType.Maelstrom
                 self:RegisterEvent("UNIT_MAXPOWER")
