@@ -545,10 +545,7 @@ function NugEnergy.Initialize(self)
                 execute_range = IsPlayerSpell(206315) and 0.35 or 0.2 -- Fury Massacre
                 local maxRage = UnitPowerMax("player", PowerTypeIndex)
 
-                local rampageCost = IsPlayerSpell(215571) and 95 or 85 -- Frothing Berserker
-                if IsPlayerSpell(202922) then -- Carnage
-                    rampageCost = rampageCost - 10
-                end
+                local rampageCost = 80
                 GetPower = RageBarGetPower(maxRage-rampageCost, maxRage-rampageCost, nil, nil)
 
                 self:RegisterUnitEvent("UNIT_HEALTH", "target")
@@ -575,7 +572,7 @@ function NugEnergy.Initialize(self)
         PowerFilter = "MAELSTROM"
         PowerTypeIndex = Enum.PowerType.Maelstrom
         self:SetNormalColor()
-        GetPower = RageBarGetPower(30, 10)
+        GetPower = RageBarGetPower(30, 10, 60)
 
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
