@@ -329,24 +329,12 @@ function NugEnergy.Initialize(self)
 
     elseif class == "PRIEST" and NugEnergyDB.insanity then
         local voidform = false
-        local voidformCost = 90
         local dpCost = 50
-        local InsanityBarGetPower = function(unit)
-            local p = UnitPower(unit, Enum_PowerType_Insanity)
-            -- local pmax = UnitPowerMax(unit)
-            local shine = p >= voidformCost
-            if voidform then shine = nil end
-            -- local state
-            -- if p >= pmax-10 then state = "CAPPED" end
-            -- if GetSpecialization() == 3  p < 60 pmax-10
-            local capped = shine
-            return p, nil, voidform, shine, capped, p < dpCost
-        end
         self.UNIT_AURA = function(self, event, unit)
             voidform = ( FindAura("player", 194249, "HELPFUL") ~= nil)
             self:UpdateEnergy()
         end
-        GetPower = InsanityBarGetPower
+        GetPower = RageBarGetPower(30, 10, dpCost)
 
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
@@ -357,16 +345,12 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterUnitEvent("UNIT_AURA", "player");
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:RegisterEvent("PLAYER_REGEN_ENABLED")
             else
                 PowerFilter = nil
                 PowerTypeIndex = nil
                 self:UnregisterEvent("UNIT_MAXPOWER")
                 self:UnregisterEvent("UNIT_POWER_FREQUENT");
                 self:UnregisterEvent("UNIT_AURA");
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
                 self:Hide()
                 self:SetScript("OnUpdate", nil)
             end
