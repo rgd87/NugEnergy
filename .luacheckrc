@@ -112,6 +112,7 @@ globals = {
     "GetTime",
     "UnitPowerMax",
     "IsPlayerSpell",
+    "IsUsableSpell",
 
     "UnitPowerType",
     "GetShapeshiftForm",

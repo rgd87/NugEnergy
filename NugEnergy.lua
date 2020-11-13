@@ -526,7 +526,33 @@ function NugEnergy.Initialize(self)
         PowerFilter = "RUNIC_POWER"
         PowerTypeIndex = Enum.PowerType.RunicPower
         self:SetNormalColor()
-        GetPower = RageBarGetPower(30, 10, nil, nil)
+
+        local MakeGetPowerUsableSpell = function(shineZone, cappedZone, minCheckSpellID, throttleText)
+            return function(unit)
+                local p = UnitPower(unit, PowerTypeIndex)
+                local pmax = UnitPowerMax(unit, PowerTypeIndex)
+                local _, nomana = IsUsableSpell(minCheckSpellID)
+                local shine = shineZone and (p >= pmax-shineZone)
+                local capped = p >= pmax-cappedZone
+                local p2 = throttleText and math_modf(p/5)*5
+                return p, p2, execute, shine, capped, nomana
+            end
+        end
+
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            self:UnregisterEvent("UNIT_AURA")
+            if GetSpecialization() == 1 then
+                GetPower = MakeGetPowerUsableSpell(30, 10, 49998, nil)
+                self:RegisterUnitEvent("UNIT_AURA", "player")
+                self.UNIT_AURA = self.UpdateEnergy
+            elseif GetSpecialization() == 2 then
+                GetPower = RageBarGetPower(30, 10, 25, nil)
+            else
+                GetPower = RageBarGetPower(30, 10, nil, nil)
+            end
+        end
+        self:SPELLS_CHANGED()
 
     elseif class == "WARRIOR" and NugEnergyDB.rage then
         PowerFilter = "RAGE"
