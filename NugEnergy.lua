@@ -75,6 +75,7 @@ local defaults = {
     marks = {},
     focus = true,
     rage = true,
+    mana = false,
     energy = true,
     fury = true,
     shards = false,
@@ -237,6 +238,15 @@ local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
     end
 end
 
+local ManaBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
+    return function(unit)
+        local p = UnitPower(unit, PowerTypeIndex)
+        local pmax = UnitPowerMax(unit, PowerTypeIndex)
+        local p2 = math.floor(p/pmax*100)
+        return p, p2
+    end
+end
+
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
@@ -326,6 +336,21 @@ function NugEnergy.Initialize(self)
         end
         self:UNIT_MAXPOWER()
 
+    elseif class == "PALADIN" and NugEnergyDB.mana then
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            if GetSpecialization() == 1 and NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+            else
+                self:Disable()
+            end
+        end
+        self:SPELLS_CHANGED()
 
     elseif class == "PRIEST" and NugEnergyDB.insanity then
         local voidform = false
@@ -334,25 +359,27 @@ function NugEnergy.Initialize(self)
             voidform = ( FindAura("player", 194249, "HELPFUL") ~= nil)
             self:UpdateEnergy()
         end
-        GetPower = RageBarGetPower(30, 10, dpCost)
+        self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
 
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             if GetSpecialization() == 3 then
                 PowerFilter = "INSANITY"
                 PowerTypeIndex = Enum.PowerType.Insanity
+                GetPower = RageBarGetPower(30, 10, dpCost)
                 self:SetNormalColor()
-                self:RegisterEvent("UNIT_MAXPOWER")
-                self:RegisterEvent("UNIT_POWER_FREQUENT");
-                self:RegisterUnitEvent("UNIT_AURA", "player");
-            else
-                PowerFilter = nil
-                PowerTypeIndex = nil
-                self:UnregisterEvent("UNIT_MAXPOWER")
-                self:UnregisterEvent("UNIT_POWER_FREQUENT");
+                self:RegisterUnitEvent("UNIT_AURA", "player")
+            elseif NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
                 self:UnregisterEvent("UNIT_AURA");
-                self:Hide()
-                self:SetScript("OnUpdate", nil)
+            else
+                self:Disable()
             end
         end
         self:SPELLS_CHANGED()
@@ -423,12 +450,17 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
+            elseif NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+                self:UnregisterEvent("UNIT_AURA");
+                self:UPDATE_STEALTH()
             else
-                PowerFilter = nil
-                PowerTypeIndex = nil
-                self:UnregisterEvent("UNIT_POWER_UPDATE")
-                self:UnregisterEvent("UNIT_MAXPOWER")
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                self:Disable()
                 self:UPDATE_STEALTH()
             end
             self:UpdateEnergy()
@@ -452,7 +484,6 @@ function NugEnergy.Initialize(self)
 
     elseif class == "MONK" and NugEnergyDB.energy then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
-        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
             if newPowerType == "ENERGY" then
@@ -476,13 +507,19 @@ function NugEnergy.Initialize(self)
                     GetPower = RageBarGetPower(10, 5, 25, true)
                 end
 
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
                 self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            elseif NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
             else
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-                PowerFilter = nil
-                PowerTypeIndex = nil
-                self:Hide()
+                self:Disable()
             end
             self:UPDATE_STEALTH()
         end
@@ -593,12 +630,16 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            elseif NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+                self:RegisterEvent("PLAYER_REGEN_DISABLED")
             else
-                PowerFilter = nil
-                PowerTypeIndex = nil
-                self:UnregisterEvent("UNIT_POWER_UPDATE")
-                self:UnregisterEvent("UNIT_MAXPOWER")
-                self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+                self:Disable()
                 self:UPDATE_STEALTH()
             end
         end
@@ -691,6 +732,15 @@ NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 --         idleSince = nil
 --     end
 -- end
+
+function NugEnergy:Disable()
+    PowerFilter = nil
+    PowerTypeIndex = nil
+    self:UnregisterEvent("UNIT_POWER_UPDATE")
+    self:UnregisterEvent("UNIT_MAXPOWER")
+    self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+    self:Hide()
+end
 
 function NugEnergy.UNIT_HEALTH(self, event, unit)
     if unit ~= "target" then return end
@@ -1517,6 +1567,10 @@ NugEnergy.Commands = {
         NugEnergyDB.insanity = not NugEnergyDB.insanity
         NugEnergy:Initialize()
     end,
+    ["mana"] = function(v)
+        NugEnergyDB.mana = not NugEnergyDB.mana
+        NugEnergy:Initialize()
+    end,
     ["fury"] = function(v)
         NugEnergyDB.fury = not NugEnergyDB.fury
         NugEnergy:Initialize()
@@ -1884,6 +1938,20 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
+                            MANA = {
+                                name = L"Mana",
+                                type = 'color',
+                                order = 10,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["MANA"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["MANA"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
+                                end,
+                            },
                         }
                     },
                     fadeGroup = {
@@ -2179,6 +2247,13 @@ function NugEnergy:CreateGUI()
                                 order = 9,
                                 get = function(info) return NugEnergyDB.maelstrom end,
                                 set = function(info, v) NugEnergy.Commands.maelstrom() end
+                            },
+                            mana = {
+                                name = L"Mana",
+                                type = "toggle",
+                                order = 10,
+                                get = function(info) return NugEnergyDB.mana end,
+                                set = function(info, v) NugEnergy.Commands.mana() end
                             },
                         },
                     },
