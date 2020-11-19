@@ -336,6 +336,23 @@ function NugEnergy.Initialize(self)
         end
         self:UNIT_MAXPOWER()
 
+    elseif class == "MAGE" and NugEnergyDB.mana then
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            if GetSpecialization() == 1 and NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+            else
+                self:Disable()
+            end
+            self:UPDATE_STEALTH()
+        end
+        self:SPELLS_CHANGED()
+
     elseif class == "PALADIN" and NugEnergyDB.mana then
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
@@ -349,6 +366,7 @@ function NugEnergy.Initialize(self)
             else
                 self:Disable()
             end
+            self:UPDATE_STEALTH()
         end
         self:SPELLS_CHANGED()
 
@@ -381,6 +399,7 @@ function NugEnergy.Initialize(self)
             else
                 self:Disable()
             end
+            self:UPDATE_STEALTH()
         end
         self:SPELLS_CHANGED()
     elseif class == "DRUID" then
@@ -640,8 +659,8 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
             else
                 self:Disable()
-                self:UPDATE_STEALTH()
             end
+            self:UPDATE_STEALTH()
         end
         self:SPELLS_CHANGED()
     else
