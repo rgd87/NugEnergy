@@ -471,10 +471,12 @@ function NugEnergy.Initialize(self)
         if isClassic and NugEnergyDB.enableClassicTicker then
             GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
             ClassicTickerFrame:Enable()
+            self:SetScript("OnUpdate",self.UpdateEnergy)
             self:UpdateBarEffects() -- Will Disable Smoothing
             NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
         else
             GetPower = RageBarGetPower(nil, 5, nil, true)
+            self:SetScript("OnUpdate", nil)
             if ClassicTickerFrame.isEnabled then
                 ClassicTickerFrame:Disable()
                 self:UpdateBarEffects()
