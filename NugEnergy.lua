@@ -814,16 +814,16 @@ local HideTimer = function(self, time)
     local a = pA + (p*rA)
     nen:SetAlpha(a)
     if self.OnUpdateCounter >= fadeAfter + fadeTime then
-        self:SetScript("OnUpdate",nil)
         if nen:GetAlpha() <= 0.03 then
             nen:Hide()
         end
-        nen.hiding = false
+        NugEnergy:StopHiding()
         self.OnUpdateCounter = 0
     end
 end
 function NugEnergy:StartHiding()
-    if (not self.hiding and self:IsVisible())  then
+    self:Show()
+    if (not self.hiding)  then
         fader:SetScript("OnUpdate", HideTimer)
         fader.OnUpdateCounter = 0
         self.hiding = true
@@ -833,6 +833,7 @@ end
 function NugEnergy:StopHiding()
     -- if self.hiding then
         fader:SetScript("OnUpdate", nil)
+        fader.OnUpdateCounter = 0
         self.hiding = false
     -- end
 end
@@ -847,8 +848,8 @@ function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
-        self:SetAlpha(1)
         self:StopHiding()
+        self:SetAlpha(1)
         self:Show()
     elseif doFadeOut and self:IsVisible() and self:GetAlpha() > NugEnergyDB.outOfCombatAlpha and PowerFilter then
         self:StartHiding()
