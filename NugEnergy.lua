@@ -87,6 +87,7 @@ local defaults = {
     x = 0, y = 0,
     marks = {},
     rage = true,
+    mana = false,
     energy = true,
     mana = false,
     manaPriest = false,
@@ -107,7 +108,7 @@ local defaults = {
     width = 100,
     height = 30,
     normalColor = { 0.9, 0.1, 0.1 }, --1
-    altColor = { .9, 0.1, 0.4 }, -- for dispatch and meta 2
+    altColor = { 0.9, 0.168, 0.43 }, -- for dispatch and meta 2
     maxColor = { 131/255, 0.2, 0.2 }, --max color 3
     lowColor = { 141/255, 31/255, 62/255 }, --low color 4
     twColor = { 0.15, 0.9, 0.4 }, -- tick window color
@@ -272,6 +273,15 @@ local IsAnySpellKnown = function (...)
         if IsPlayerSpell(spellID) then return spellID end
     end
 end
+local ManaBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
+    return function(unit)
+        local p = UnitPower(unit, PowerTypeIndex)
+        local pmax = UnitPowerMax(unit, PowerTypeIndex)
+        local p2 = math.floor(p/pmax*100)
+        return p, p2
+    end
+end
+
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
@@ -437,14 +447,23 @@ function NugEnergy.Initialize(self)
 
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
+            self:UnregisterEvent("UNIT_HEALTH")
+            self:UnregisterEvent("UNIT_AURA")
+            self:RegisterEvent("PLAYER_TARGET_CHANGED")
             if spec == 1 and IsPlayerSpell(111240) then --blindside
                 execute_range = 0.30
                 self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:RegisterEvent("PLAYER_TARGET_CHANGED")
+                self:UnregisterEvent("UNIT_AURA")
+            elseif spec == 3 then
+                self:RegisterUnitEvent("UNIT_AURA", "player")
+                self:UnregisterEvent("UNIT_HEALTH")
+                self.UNIT_AURA = function(self, event, unit)
+                    execute = ( FindAura("player", 185422, "HELPFUL") ~= nil)
+                    self:UpdateEnergy()
+                end
             else
                 execute_range = nil
                 execute = nil
-                self:UnregisterEvent("UNIT_HEALTH")
                 self:UnregisterEvent("PLAYER_TARGET_CHANGED")
             end
         end
@@ -466,6 +485,39 @@ function NugEnergy.Initialize(self)
         end
         self:UNIT_MAXPOWER()
 
+    elseif class == "MAGE" and NugEnergyDB.mana then
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            if GetSpecialization() == 1 and NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+            else
+                self:Disable()
+            end
+            self:UPDATE_STEALTH()
+        end
+        self:SPELLS_CHANGED()
+
+    elseif class == "PALADIN" and NugEnergyDB.mana then
+        self:RegisterEvent("SPELLS_CHANGED")
+        self.SPELLS_CHANGED = function(self)
+            if GetSpecialization() == 1 and NugEnergyDB.mana then
+                PowerFilter = "MANA"
+                PowerTypeIndex = Enum.PowerType.Mana
+                GetPower = ManaBarGetPower()
+                self:SetNormalColor()
+                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+            else
+                self:Disable()
+            end
+            self:UPDATE_STEALTH()
+        end
+        self:SPELLS_CHANGED()
 
     elseif class == "DRUID" then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
@@ -712,6 +764,15 @@ function NugEnergy:PlaySound()
     PlaySoundFile(sound, NugEnergyDB.soundChannel)
 end
 
+function NugEnergy:Disable()
+    PowerFilter = nil
+    PowerTypeIndex = nil
+    self:UnregisterEvent("UNIT_POWER_UPDATE")
+    self:UnregisterEvent("UNIT_MAXPOWER")
+    self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+    self:Hide()
+end
+
 function NugEnergy.UNIT_HEALTH(self, event, unit)
     if unit ~= "target" then return end
     local uhm = UnitHealthMax(unit)
@@ -756,16 +817,16 @@ local HideTimer = function(self, time)
     local a = pA + (p*rA)
     nen:SetAlpha(a)
     if self.OnUpdateCounter >= fadeAfter + fadeTime then
-        self:SetScript("OnUpdate",nil)
         if nen:GetAlpha() <= 0.03 then
             nen:Hide()
         end
-        nen.hiding = false
+        NugEnergy:StopHiding()
         self.OnUpdateCounter = 0
     end
 end
 function NugEnergy:StartHiding()
-    if (not self.hiding and self:IsVisible())  then
+    self:Show()
+    if (not self.hiding)  then
         fader:SetScript("OnUpdate", HideTimer)
         fader.OnUpdateCounter = 0
         self.hiding = true
@@ -775,6 +836,7 @@ end
 function NugEnergy:StopHiding()
     -- if self.hiding then
         fader:SetScript("OnUpdate", nil)
+        fader.OnUpdateCounter = 0
         self.hiding = false
     -- end
 end
@@ -789,8 +851,8 @@ function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     then
         self:UNIT_MAXPOWER()
         self:UpdateEnergy()
-        self:SetAlpha(1)
         self:StopHiding()
+        self:SetAlpha(1)
         self:Show()
     elseif doFadeOut and self:IsVisible() and self:GetAlpha() > NugEnergyDB.outOfCombatAlpha and PowerFilter then
         self:StartHiding()
@@ -810,18 +872,18 @@ function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
     end
 end
 function NugEnergy.ReconfigureMarks(self)
-    local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
-    for at, frame in pairs(NugEnergy.marks) do
-        frame:Hide()
-        table.insert(free_marks, frame)
-        NugEnergy.marks[at] = nil
-        -- print("Hiding", at)
-    end
-    for at in pairs(spec_marks) do
-        -- print("Showing", at)
-        NugEnergy:CreateMark(at)
-    end
-    -- NugEnergy:RealignMarks()
+    -- local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
+    -- for at, frame in pairs(NugEnergy.marks) do
+    --     frame:Hide()
+    --     table.insert(free_marks, frame)
+    --     NugEnergy.marks[at] = nil
+    --     -- print("Hiding", at)
+    -- end
+    -- for at in pairs(spec_marks) do
+    --     -- print("Showing", at)
+    --     NugEnergy:CreateMark(at)
+    -- end
+    -- -- NugEnergy:RealignMarks()
 end
 
 
@@ -1812,6 +1874,20 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
+                            MANA = {
+                                name = L"Mana",
+                                type = 'color',
+                                order = 10,
+                                width = 0.6,
+                                get = function(info)
+                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["MANA"])
+                                    return r,g,b
+                                end,
+                                set = function(info, r, g, b)
+                                    NugEnergyDB.powerTypeColors["MANA"] = {r,g,b}
+                                    NugEnergy:SetNormalColor()
+                                end,
+                            },
                         }
                     },
                     fadeGroup = {
@@ -2253,6 +2329,13 @@ function NugEnergy:CreateGUI()
                                 max = 0.5,
                                 step = 0.01,
                                 order = 5,
+                            },
+                            mana = {
+                                name = L"Mana",
+                                type = "toggle",
+                                order = 10,
+                                get = function(info) return NugEnergyDB.mana end,
+                                set = function(info, v) NugEnergy.Commands.mana() end
                             },
                         },
                     },
