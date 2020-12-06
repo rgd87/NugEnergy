@@ -97,7 +97,7 @@ local defaults = {
     width = 100,
     height = 30,
     normalColor = { 0.9, 0.1, 0.1 }, --1
-    altColor = { .9, 0.1, 0.4 }, -- for dispatch and meta 2
+    altColor = { 0.9, 0.168, 0.43 }, -- for dispatch and meta 2
     maxColor = { 131/255, 0.2, 0.2 }, --max color 3
     lowColor = { 141/255, 31/255, 62/255 }, --low color 4
     enableColorByPowerType = false,
@@ -307,14 +307,23 @@ function NugEnergy.Initialize(self)
 
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
+            self:UnregisterEvent("UNIT_HEALTH")
+            self:UnregisterEvent("UNIT_AURA")
+            self:RegisterEvent("PLAYER_TARGET_CHANGED")
             if spec == 1 and IsPlayerSpell(111240) then --blindside
                 execute_range = 0.30
                 self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:RegisterEvent("PLAYER_TARGET_CHANGED")
+                self:UnregisterEvent("UNIT_AURA")
+            elseif spec == 3 then
+                self:RegisterUnitEvent("UNIT_AURA", "player")
+                self:UnregisterEvent("UNIT_HEALTH")
+                self.UNIT_AURA = function(self, event, unit)
+                    execute = ( FindAura("player", 185422, "HELPFUL") ~= nil)
+                    self:UpdateEnergy()
+                end
             else
                 execute_range = nil
                 execute = nil
-                self:UnregisterEvent("UNIT_HEALTH")
                 self:UnregisterEvent("PLAYER_TARGET_CHANGED")
             end
         end
