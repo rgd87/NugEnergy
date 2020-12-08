@@ -560,6 +560,7 @@ function NugEnergy.Initialize(self)
                 if isClassic and NugEnergyDB.enableClassicTicker then
                     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
+                    self:SetScript("OnUpdate",self.UpdateEnergy)
                     ClassicTickerFrame:Enable()
                     self:UpdateBarEffects()
                 else
