@@ -127,4 +127,5 @@ globals = {
     "GetManaRegen",
     "GetInventoryItemLink",
     "GetItemStats",
+    "BackdropTemplateMixin",
 }
