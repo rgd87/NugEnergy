@@ -23,6 +23,7 @@ end)
 local LSM = LibStub("LibSharedMedia-3.0")
 
 LSM:Register("statusbar", "Glamour7", [[Interface\AddOns\NugEnergy\statusbar.tga]])
+LSM:Register("statusbar", "Glamour7NoArt", [[Interface\AddOns\NugEnergy\statusbar3.tga]])
 LSM:Register("statusbar", "NugEnergyVertical", [[Interface\AddOns\NugEnergy\vstatusbar.tga]])
 
 LSM:Register("font", "OpenSans Bold", [[Interface\AddOns\NugEnergy\OpenSans-Bold.ttf]], GetLocale() ~= "enUS" and 15)
@@ -1112,7 +1113,7 @@ function NugEnergy:UpdateFrameBorder()
         backdrop:Show()
 
     elseif borderType == "TOOLTIP" then
-        self.border = self.border or CreateFrame("Frame", nil, self, isShadowlands and "BackdropTemplate")
+        self.border = self.border or CreateFrame("Frame", nil, self, BackdropTemplateMixin and "BackdropTemplate")
         local border = self.border
         border:SetPoint("TOPLEFT", -3, 3)
         border:SetPoint("BOTTOMRIGHT", 3, -3)
@@ -1123,7 +1124,7 @@ function NugEnergy:UpdateFrameBorder()
         border:SetBackdropBorderColor(0.55,0.55,0.55)
         border:Show()
     elseif borderType == "STATUSBAR" then
-        self.border = self.border or CreateFrame("Frame", nil, self, isShadowlands and "BackdropTemplate")
+        self.border = self.border or CreateFrame("Frame", nil, self, BackdropTemplateMixin and "BackdropTemplate")
         local border = self.border
         border:SetPoint("TOPLEFT", -2, 3)
         border:SetPoint("BOTTOMRIGHT", 2, -3)
@@ -1133,7 +1134,7 @@ function NugEnergy:UpdateFrameBorder()
         border:SetBackdropBorderColor(1,1,1)
         border:Show()
     elseif borderType == "3PX" then
-        self.border = self.border or CreateFrame("Frame", nil, self, isShadowlands and "BackdropTemplate")
+        self.border = self.border or CreateFrame("Frame", nil, self, BackdropTemplateMixin and "BackdropTemplate")
         local border = self.border
         border:SetPoint("TOPLEFT", -2, 2)
         border:SetPoint("BOTTOMRIGHT", 2, -2)
@@ -1266,7 +1267,7 @@ function NugEnergy.Create(self)
     -- a1:SetDuration(0.2)
     -- a1:SetOrder(1)
 
-    local at = CreateFrame("Frame", nil, f, isShadowlands and "BackdropTemplate")
+    local at = CreateFrame("Frame", nil, f, BackdropTemplateMixin  and "BackdropTemplate")
     local border_backdrop = {
         edgeFile = "Interface\\Addons\\NugEnergy\\glow", tileEdge = true, edgeSize = 16,
         -- insets = {left = -16, right = -16, top = -16, bottom = -16},
