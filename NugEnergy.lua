@@ -9,9 +9,10 @@ local onlyText = false
 local shouldBeFull = false
 local isFull = true
 local isVertical
-local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
-local isShadowlands = select(4,GetBuildInfo()) > 90000
-local GetSpecialization = isClassic and function() end or _G.GetSpecialization
+local APILevel = math.floor(select(4,GetBuildInfo())/10000)
+local isClassicTicker = APILevel <= 2
+local isClassic = APILevel <= 2
+local GetSpecialization = APILevel <= 3 and function() end or _G.GetSpecialization
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -469,7 +470,7 @@ function NugEnergy.Initialize(self)
             end
         end
 
-        if isClassic and NugEnergyDB.enableClassicTicker then
+        if isClassicTicker and NugEnergyDB.enableClassicTicker then
             GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
             ClassicTickerFrame:Enable()
             self:SetScript("OnUpdate",self.UpdateEnergy)
@@ -525,7 +526,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                if isClassic and NugEnergyDB.enableClassicTicker then
+                if isClassicTicker and NugEnergyDB.enableClassicTicker then
                     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
                     self:UnregisterEvent("UNIT_POWER_FREQUENT")
@@ -565,7 +566,7 @@ function NugEnergy.Initialize(self)
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
-            elseif newPowerType =="MANA" and isClassic then
+            elseif newPowerType =="MANA" and isClassicTicker then
                 if NugEnergyDB.manaDruid then
                     self:SwitchToMana()
                 else
@@ -610,7 +611,7 @@ function NugEnergy.Initialize(self)
             self:RegisterEvent("PLAYER_TARGET_CHANGED")
         end
 
-    elseif class == "PRIEST" and isClassic and (NugEnergyDB.manaPriest or NugEnergyDB.mana) then
+    elseif class == "PRIEST" and isClassicTicker and (NugEnergyDB.manaPriest or NugEnergyDB.mana) then
         self:SwitchToMana()
 
     elseif NugEnergyDB.mana then
@@ -819,7 +820,7 @@ function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
     local inCombat = UnitAffectingCombat("player")
     upvalueInCombat = inCombat
     if (inCombat or
-        ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
+        ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassicTicker or (shouldBeFull and not isFull))) or
         ForcedToShow)
         and PowerFilter
     then
