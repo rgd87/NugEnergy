@@ -76,6 +76,7 @@ local twPlaySound
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
 local Enum_PowerType_Energy = EPT.Energy
+local Enum_PowerType_Mana = EPT.Mana
 local Enum_PowerType_RunicPower = EPT.RunicPower
 local Enum_PowerType_LunarPower = EPT.LunarPower
 local Enum_PowerType_Focus = EPT.Focus
@@ -331,60 +332,46 @@ local ClassicTickerColorUpdate = function(self, tp, prevColor)
     end
 end
 
-local GetMP5FromGear = function(unit)
-    local mp5 = 0;
-    for i = 1, 18 do
-        local itemLink = GetInventoryItemLink(unit, i);
-        if itemLink then
-            local stats = GetItemStats(itemLink);
-            if stats then
-                -- This returns (mp5 - 1)
-                local statMP5 = stats["ITEM_MOD_POWER_REGEN0_SHORT"];
-                if (statMP5) then
-                    mp5 = mp5 + statMP5 + 1;
-                end
-            end
+local ClassicTickerFrame = CreateFrame("Frame")
+local bit_band = bit.band
+local playerGUID = UnitGUID("player")
+local externalManaGainTimestamp = 0
+ClassicTickerFrame:SetScript("OnEvent", function()
+    local timestamp, eventType, hideCaster,
+    srcGUID, srcName, srcFlags, srcFlags2,
+    dstGUID, dstName, dstFlags, dstFlags2,
+    spellID, spellName, spellSchool, auraType, amount = CombatLogGetCurrentEventInfo()
+    if dstGUID == playerGUID then
+        if eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE" then
+            externalManaGainTimestamp = GetTime()
         end
     end
-    return mp5;
-end
-
-local ClassicTickerFrame = CreateFrame("Frame")
-
-ClassicTickerFrame:RegisterUnitEvent("UNIT_STATS", "player")
-local manaPerTick = 1
-ClassicTickerFrame:SetScript("OnEvent", function()
-    local baseManaPerSec, castingManaPerSec = GetManaRegen()
-    manaPerTick = baseManaPerSec * 2 + GetMP5FromGear("player") * 0.4
 end)
 
-local maxEnergy = 100
 local tickFiltering = true
 local ClassicTickerOnUpdate = function(self)
     local currentEnergy = UnitPower("player", PowerTypeIndex)
     local now = GetTime()
     local possibleTick = false
     if currentEnergy > lastEnergyValue then
-        -- Mana tick
-        if PowerTypeIndex == 0 then
-            local replenished = currentEnergy - lastEnergyValue
-            local deviation = currentEnergy - lastEnergyValue - manaPerTick
-            -- Actual mana tick is always integer so there are deviations
-            if (deviation > -1.5) and (deviation < 1.5) then
+        if PowerTypeIndex == Enum_PowerType_Energy and tickFiltering then
+            local diff = currentEnergy - lastEnergyValue
+            if  (diff > 18 and diff < 22) or -- normal tick
+                (diff > 38 and diff < 42) or -- adr rush
+                (diff < 42 and currentEnergy == UnitPowerMax("player", PowerTypeIndex)) -- including tick to cap, but excluding thistle tea
+            then
                 possibleTick = true
+            end
+        elseif PowerTypeIndex == Enum_PowerType_Mana then
+            possibleTick = true
+
+            local now = GetTime()
+            if now - externalManaGainTimestamp < 0.02 then
+                externalManaGainTimestamp = 0
+                possibleTick = false
             end
         else
-            if tickFiltering then
-                local diff = currentEnergy - lastEnergyValue
-                if  (diff > 18 and diff < 22) or -- normal tick
-                    (diff > 38 and diff < 42) or -- adr rush
-                    (diff < 42 and currentEnergy == maxEnergy) -- including tick to cap, but excluding thistle tea
-                then
-                    possibleTick = true
-                end
-            else
-                possibleTick = true
-            end
+            possibleTick = true
         end
     end
     if now >= lastEnergyTickTime + 2 then
@@ -396,16 +383,19 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
-ClassicTickerFrame.Enable = function(self)
+ClassicTickerFrame.Enable = function(self, trackManaGains)
     self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+    if trackManaGains then
+        self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    end
     self.isEnabled = true
 end
 ClassicTickerFrame.Disable = function(self)
     self:SetScript("OnUpdate", nil)
+    self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     self.isEnabled = false
 end
 local UNIT_MAXPOWER_ClassicTicker = function(self)
-    maxEnergy = UnitPowerMax("player", PowerTypeIndex)
     self:SetMinMaxValues(0, 2)
 end
 
@@ -2409,7 +2399,7 @@ function NugEnergy:SwitchToMana()
                 if self.FSRWatcher then self.FSRWatcher:Disable() end
 
                 self:SetScript("OnUpdate",self.UpdateEnergy)
-                ClassicTickerFrame:Enable()
+                ClassicTickerFrame:Enable("TRACK_MANA_GAINS")
                 self:UpdateBarEffects()
                 switchToManaCallback()
             end

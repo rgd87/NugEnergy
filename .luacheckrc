@@ -128,4 +128,6 @@ globals = {
     "GetInventoryItemLink",
     "GetItemStats",
     "BackdropTemplateMixin",
+    "UnitGUID",
+    "CombatLogGetCurrentEventInfo",
 }
