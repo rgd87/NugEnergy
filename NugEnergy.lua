@@ -361,6 +361,12 @@ local ClassicTickerOnUpdate = function(self)
                 (diff < 42 and currentEnergy == UnitPowerMax("player", PowerTypeIndex)) -- including tick to cap, but excluding thistle tea
             then
                 possibleTick = true
+
+                local now = GetTime()
+                if now - externalManaGainTimestamp < 0.02 then
+                    externalManaGainTimestamp = 0
+                    possibleTick = false
+                end
             end
         elseif PowerTypeIndex == Enum_PowerType_Mana then
             possibleTick = true
@@ -383,9 +389,9 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
-ClassicTickerFrame.Enable = function(self, trackManaGains)
+ClassicTickerFrame.Enable = function(self, trackEnergize)
     self:SetScript("OnUpdate", ClassicTickerOnUpdate)
-    if trackManaGains then
+    if trackEnergize then
         self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     end
     self.isEnabled = true
@@ -462,7 +468,7 @@ function NugEnergy.Initialize(self)
 
         if isClassicTicker and NugEnergyDB.enableClassicTicker then
             GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
-            ClassicTickerFrame:Enable()
+            ClassicTickerFrame:Enable(true)
             self:SetScript("OnUpdate",self.UpdateEnergy)
             self:UpdateBarEffects() -- Will Disable Smoothing
             NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
@@ -521,7 +527,7 @@ function NugEnergy.Initialize(self)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
                     self:UnregisterEvent("UNIT_POWER_FREQUENT")
                     self:SetScript("OnUpdate",self.UpdateEnergy)
-                    ClassicTickerFrame:Enable()
+                    ClassicTickerFrame:Enable(true)
                     self:UpdateBarEffects()
                 else
                     GetPower = RageBarGetPower(nil, 5, nil, true)
