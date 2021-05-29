@@ -60,15 +60,6 @@ local execute = false
 local execute_range = nil
 local upvalueInCombat = nil
 
-local tickerEnabled
-local twEnabled
-local twEnabledCappedOnly
-local twStart
-local twLength
-local twCrossfade
-local twChangeColor
-local twPlaySound
-
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
 local Enum_PowerType_Energy = EPT.Energy
@@ -221,13 +212,7 @@ function NugEnergy:UpdateUpvalues()
     spenderFeedback = NugEnergy.db.profile.spenderFeedback
 
     if APILevel <= 2 then
-        twEnabled = NugEnergy.db.profile.twEnabled
-        twEnabledCappedOnly = NugEnergy.db.profile.twEnabledCappedOnly
-        twStart = NugEnergy.db.profile.twStart
-        twLength = NugEnergy.db.profile.twLength
-        twCrossfade = NugEnergy.db.profile.twCrossfade
-        twPlaySound = NugEnergy.db.profile.soundName ~= "none"
-        twChangeColor = NugEnergy.db.profile.twChangeColor
+        self.ticker.UpdateUpvalues()
     end
 end
 
@@ -272,72 +257,6 @@ local ManaBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
         return p, p2
     end
 end
-
-
-local lastEnergyTickTime = GetTime()
-local lastEnergyValue = 0
-local heartbeatPlayed = false
-local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
-    return function(unit)
-        local p = GetTime() - lastEnergyTickTime
-        local p2 = UnitPower(unit, PowerTypeIndex)
-        local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local shine = shineZone and (p2 >= pmax-shineZone)
-        local capped = p2 >= pmax-cappedZone
-        -- local p2 = throttleText and math_modf(p2/5)*5 or p2
-        return p, p2, execute, shine, capped, (minLimit and p2 < minLimit)
-    end
-end
-
-local UNIT_MAXPOWER_ClassicTicker = function(self)
-    self:SetMinMaxValues(0, 2)
-end
-
-local tickFiltering = true
-local ClassicTickerFrame = CreateFrame("Frame")
-local ClassicTickerOnUpdate = function(self)
-    local currentEnergy = UnitPower("player", PowerTypeIndex)
-    local now = GetTime()
-    local possibleTick = false
-    if currentEnergy > lastEnergyValue then
-        if PowerTypeIndex == Enum_PowerType_Energy and tickFiltering then
-            local diff = currentEnergy - lastEnergyValue
-            if  (diff > 18 and diff < 22) or -- normal tick
-                (diff > 38 and diff < 42) or -- adr rush
-                (diff < 42 and currentEnergy == UnitPowerMax("player", PowerTypeIndex)) -- including tick to cap, but excluding thistle tea
-            then
-                possibleTick = true
-            end
-        else
-            possibleTick = true
-        end
-    end
-    if now >= lastEnergyTickTime + 2 then
-        possibleTick = true
-    end
-    if possibleTick then
-        lastEnergyTickTime = now
-        heartbeatPlayed = false
-    end
-    lastEnergyValue = currentEnergy
-end
-function ClassicTickerFrame:GetLastTickTime()
-    return lastEnergyTickTime
-end
-function ClassicTickerFrame:Reset()
-    lastEnergyTickTime = GetTime()
-end
-ClassicTickerFrame.Enable = function(self)
-    self:SetScript("OnUpdate", ClassicTickerOnUpdate)
-    tickerEnabled = true
-    self.isEnabled = true
-end
-ClassicTickerFrame.Disable = function(self)
-    self:SetScript("OnUpdate", nil)
-    tickerEnabled = false
-    self.isEnabled = false
-end
-NugEnergy.ticker = ClassicTickerFrame
 
 function NugEnergy.Initialize(self)
     -- self:RegisterEvent("UNIT_POWER_UPDATE")
@@ -759,65 +678,6 @@ function NugEnergy.Initialize(self)
     return true
 end
 
-do
-    local UnitReaction = UnitReaction
-    local GetUnitSpeed = GetUnitSpeed
-    local IsStealthed = IsStealthed
-
-    local heartbeatEligible
-    local heartbeatEligibleLastTime = 0
-    local heartbeatEligibleTimeout = 8
-    local GetTickProgress = function() return GetTime() - lastEnergyTickTime end
-    local function GetGradientColor(c1, c2, v)
-        if v > 1 then v = 1 end
-        local r = c1[1] + v*(c2[1]-c1[1])
-        local g = c1[2] + v*(c2[2]-c1[2])
-        local b = c1[3] + v*(c2[3]-c1[3])
-        return r,g,b
-    end
-    local function ClassicTickerColorUpdate(self, tp, prevColor)
-        local twSecondThreshold = twStart + twLength
-
-        if tp > twSecondThreshold then
-            local fp = twCrossfade > 0 and  ((twSecondThreshold + twCrossfade - tp) / twCrossfade) or 0
-            if fp < 0 then fp = 0 end
-            local cN = prevColor
-            local cA = NugEnergy.db.profile.twColor
-            self:SetColor(GetGradientColor(cN, cA, fp))
-        elseif tp > twStart then
-            local fp = twCrossfade > 0 and  ((twStart + twCrossfade - tp) / twCrossfade) or 0
-            if fp < 0 then fp = 0 end
-            local cN = prevColor
-            local cA = NugEnergy.db.profile.twColor
-            self:SetColor(GetGradientColor(cA, cN, fp))
-        elseif tp >= 0 then
-            local cN = prevColor
-            self:SetColor(unpack(cN))
-        end
-    end
-
-    function NugEnergy:ColorTickWindow(isCapped, prevColor)
-        if tickerEnabled and (not twEnabledCappedOnly or isCapped) and GetTickProgress() > twStart then
-            if twPlaySound then
-                local now = GetTime()
-                local isEnemy = (UnitReaction("target", "player") or 4) <= 4
-                heartbeatEligible = IsStealthed() and UnitExists("target") and isEnemy and GetUnitSpeed("player") > 0
-                if heartbeatEligible then
-                    heartbeatEligibleLastTime = now
-                end
-
-                if not heartbeatPlayed and now - heartbeatEligibleLastTime < heartbeatEligibleTimeout then
-                    heartbeatPlayed = true
-                    self:PlaySound()
-                end
-            end
-
-            if twChangeColor then
-                ClassicTickerColorUpdate(self, GetTickProgress(), prevColor)
-            end
-        end
-    end
-end
 
 function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
@@ -858,7 +718,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
         -- self.spentBar:SetColor(unpack(c))
         self:SetColor(unpack(c))
 
-        if twEnabled then
+        if APILevel <= 2 then
             self:ColorTickWindow(capped, c)
         end
 
@@ -1011,7 +871,6 @@ function NugEnergy:UpdateVisibility()
         self:Hide()
     end
 end
-NugEnergy.__UPDATE_STEALTH = NugEnergy.UPDATE_STEALTH
 
 function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
     NugEnergy:ReconfigureMarks()
@@ -1901,8 +1760,7 @@ function NugEnergy:CreateGUI()
                 name = L"Restore Defaults",
                 type = 'execute',
                 func = function()
-                    NugEnergy.db.profile = {}
-                    SetupDefaults(NugEnergy.db.profile, defaults)
+                    NugEnergy.db:Reset()
                     NugEnergy:Resize()
                     NugEnergy:ResizeText()
                 end,

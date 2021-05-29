@@ -124,5 +124,6 @@ globals = {
     "InterfaceOptionsFrame_OpenToCategory",
     "PowerBarColor",
     "GetCVar",
-
+    "BackdropTemplateMixin",
+    "UnitReaction"
 }
