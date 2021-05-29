@@ -58,8 +58,9 @@ end
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
 local GetPower_ClassicRogueTicker = function(PowerTypeIndex, shineZone, cappedZone, minLimit, throttleText)
+    local ticker = NugEnergy.ticker
     return function(unit)
-        local p = GetTime() - lastEnergyTickTime
+        local p = GetTime() - ticker:GetLastTickTime()
         local p2 = UnitPower(unit, PowerTypeIndex)
         local pmax = UnitPowerMax(unit, PowerTypeIndex)
         local shine = shineZone and (p2 >= pmax-shineZone)
@@ -96,10 +97,6 @@ NugEnergy:RegisterConfig("EnergyRogue", {
         self.eventProxy.UNIT_POWER_FREQUENT = FILTERED_UNIT_POWER_UPDATE("ENERGY")
 
         self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Energy, nil, 5, nil, true))
-        if self.ticker.isEnabled then
-            self.ticker:Disable()
-            self:UpdateBarEffects()
-        end
     end,
 }, "ROGUE")
 
@@ -108,9 +105,11 @@ NugEnergy:RegisterConfig("EnergyRogueTicker", {
     setup = function(self, spec)
         self:ApplyConfig("EnergyRogue")
 
-        self:SetPowerGetter(GetPower_ClassicRogueTicker(nil, 19, 0, false))
+        self:SetPowerGetter(GetPower_ClassicRogueTicker(Enum.PowerType.Energy, nil, 19, 0, false))
+        self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
+        self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
+        self:SetMinMaxValues(0, 2)
         self.ticker:Enable()
         self:UpdateBarEffects("DISABLE_SMOOTHING")
-        self.eventProxy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
     end,
 }, "ROGUE")

@@ -9,15 +9,16 @@ local onlyText = false
 local shouldBeFull = false
 local isFull = true
 local isVertical
-local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
-local isShadowlands = select(4,GetBuildInfo()) > 90000
-local GetSpecialization = isClassic and function() end or _G.GetSpecialization
+
+local APILevel = math.floor(select(4,GetBuildInfo())/10000)
+local isClassic = APILevel <= 3
+local GetSpecialization = isClassic and function() return 1 end or _G.GetSpecialization
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
 NugEnergy:SetScript("OnEvent", function(self, event, ...)
     -- print(event, unpack{...})
-	return self[event](self, event, ...)
+    return self[event](self, event, ...)
 end)
 
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -82,7 +83,7 @@ local ColorArray = function(color) return {color.r, color.g, color.b} end
 local defaults = {
     global = {
         classConfig = {
-            ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
+            ROGUE = { "EnergyRogueTicker", "EnergyRogueTicker", "EnergyRogueTicker" },
             DRUID = { "Disabled", "Disabled", "Disabled", "Disabled" },
             PALADIN = { "Disabled", "Disabled", "Disabled" },
             MONK = { "Disabled", "Disabled", "Disabled" },
@@ -148,6 +149,17 @@ local defaults = {
         textColor = {1,1,1, isClassic and 0.8 or 0.3},
         outOfCombatAlpha = 0,
         isVertical = false,
+
+        twEnabled = true,
+        twColor = { 0.15, 0.9, 0.4 }, -- tick window color
+        twEnabledCappedOnly = true,
+        twStart = 0.9,
+        twLength = 0.4,
+        twCrossfade = 0.15,
+        twChangeColor = true,
+        soundName = "none",
+        soundNameCustom = "Interface\\AddOns\\YourSound.mp3",
+        soundChannel = "SFX",
     }
 }
 local normalColor = defaults.profile.normalColor
@@ -155,32 +167,6 @@ local lowColor = defaults.profile.lowColor
 local maxColor = defaults.profile.maxColor
 local free_marks = {}
 
-local function SetupDefaults(t, defaults)
-    for k,v in pairs(defaults) do
-        if type(v) == "table" then
-            if t[k] == nil then
-                t[k] = CopyTable(v)
-            else
-                SetupDefaults(t[k], v)
-            end
-        else
-            if t[k] == nil then t[k] = v end
-        end
-    end
-end
-local function RemoveDefaults(t, defaults)
-    for k, v in pairs(defaults) do
-        if type(t[k]) == 'table' and type(v) == 'table' then
-            RemoveDefaults(t[k], v)
-            if next(t[k]) == nil then
-                t[k] = nil
-            end
-        elseif t[k] == v then
-            t[k] = nil
-        end
-    end
-    return t
-end
 
 local pmult = 1
 local function pixelperfect(size)
@@ -203,7 +189,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     end
 
 
-    if not isClassic then
+    if APILevel >= 3 then
         self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
     end
 
@@ -233,6 +219,16 @@ function NugEnergy:UpdateUpvalues()
     isVertical = NugEnergy.db.profile.isVertical
     onlyText = NugEnergy.db.profile.hideBar
     spenderFeedback = NugEnergy.db.profile.spenderFeedback
+
+    if APILevel <= 2 then
+        twEnabled = NugEnergy.db.profile.twEnabled
+        twEnabledCappedOnly = NugEnergy.db.profile.twEnabledCappedOnly
+        twStart = NugEnergy.db.profile.twStart
+        twLength = NugEnergy.db.profile.twLength
+        twCrossfade = NugEnergy.db.profile.twCrossfade
+        twPlaySound = NugEnergy.db.profile.soundName ~= "none"
+        twChangeColor = NugEnergy.db.profile.twChangeColor
+    end
 end
 
 
@@ -325,12 +321,20 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
+function ClassicTickerFrame:GetLastTickTime()
+    return lastEnergyTickTime
+end
+function ClassicTickerFrame:Reset()
+    lastEnergyTickTime = GetTime()
+end
 ClassicTickerFrame.Enable = function(self)
     self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+    tickerEnabled = true
     self.isEnabled = true
 end
 ClassicTickerFrame.Disable = function(self)
     self:SetScript("OnUpdate", nil)
+    tickerEnabled = false
     self.isEnabled = false
 end
 NugEnergy.ticker = ClassicTickerFrame
@@ -342,8 +346,6 @@ function NugEnergy.Initialize(self)
     self:RegisterEvent("PLAYER_REGEN_DISABLED")
     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-
-    self:RegisterEvent("SPELLS_CHANGED")
 
     if not self.initialized then
         self:Create()
@@ -362,6 +364,9 @@ function NugEnergy.Initialize(self)
         self.initialized = true
         self:SetNormalColor()
     end
+
+    self:RegisterEvent("SPELLS_CHANGED")
+    self:SPELLS_CHANGED()
 
 
     --[===[
@@ -754,6 +759,65 @@ function NugEnergy.Initialize(self)
     return true
 end
 
+do
+    local UnitReaction = UnitReaction
+    local GetUnitSpeed = GetUnitSpeed
+    local IsStealthed = IsStealthed
+
+    local heartbeatEligible
+    local heartbeatEligibleLastTime = 0
+    local heartbeatEligibleTimeout = 8
+    local GetTickProgress = function() return GetTime() - lastEnergyTickTime end
+    local function GetGradientColor(c1, c2, v)
+        if v > 1 then v = 1 end
+        local r = c1[1] + v*(c2[1]-c1[1])
+        local g = c1[2] + v*(c2[2]-c1[2])
+        local b = c1[3] + v*(c2[3]-c1[3])
+        return r,g,b
+    end
+    local function ClassicTickerColorUpdate(self, tp, prevColor)
+        local twSecondThreshold = twStart + twLength
+
+        if tp > twSecondThreshold then
+            local fp = twCrossfade > 0 and  ((twSecondThreshold + twCrossfade - tp) / twCrossfade) or 0
+            if fp < 0 then fp = 0 end
+            local cN = prevColor
+            local cA = NugEnergy.db.profile.twColor
+            self:SetColor(GetGradientColor(cN, cA, fp))
+        elseif tp > twStart then
+            local fp = twCrossfade > 0 and  ((twStart + twCrossfade - tp) / twCrossfade) or 0
+            if fp < 0 then fp = 0 end
+            local cN = prevColor
+            local cA = NugEnergy.db.profile.twColor
+            self:SetColor(GetGradientColor(cA, cN, fp))
+        elseif tp >= 0 then
+            local cN = prevColor
+            self:SetColor(unpack(cN))
+        end
+    end
+
+    function NugEnergy:ColorTickWindow(isCapped, prevColor)
+        if tickerEnabled and (not twEnabledCappedOnly or isCapped) and GetTickProgress() > twStart then
+            if twPlaySound then
+                local now = GetTime()
+                local isEnemy = (UnitReaction("target", "player") or 4) <= 4
+                heartbeatEligible = IsStealthed() and UnitExists("target") and isEnemy and GetUnitSpeed("player") > 0
+                if heartbeatEligible then
+                    heartbeatEligibleLastTime = now
+                end
+
+                if not heartbeatPlayed and now - heartbeatEligibleLastTime < heartbeatEligibleTimeout then
+                    heartbeatPlayed = true
+                    self:PlaySound()
+                end
+            end
+
+            if twChangeColor then
+                ClassicTickerColorUpdate(self, GetTickProgress(), prevColor)
+            end
+        end
+    end
+end
 
 function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
@@ -794,6 +858,10 @@ function NugEnergy.UpdateEnergy(self, elapsed)
         -- self.spentBar:SetColor(unpack(c))
         self:SetColor(unpack(c))
 
+        if twEnabled then
+            self:ColorTickWindow(capped, c)
+        end
+
         self:SetValue(p)
         --if self.marks[p] then self:PlaySpell(self.marks[p]) end
         if self.marks[p] then self.marks[p].shine:Play() end
@@ -831,6 +899,16 @@ NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 --     end
 -- end
 
+function NugEnergy:PlaySound()
+    local sound
+    if NugEnergy.db.profile.soundName == "Heartbeat" then
+        sound = "Interface\\AddOns\\NugEnergy\\heartbeat.mp3"
+    elseif NugEnergy.db.profile.soundName then
+        sound = NugEnergy.db.profile.soundNameCustom
+    end
+    PlaySoundFile(sound, NugEnergy.db.profile.soundChannel)
+end
+
 function NugEnergy:Disable()
     PowerFilter = nil
     PowerTypeIndex = nil
@@ -859,14 +937,13 @@ function NugEnergy.PLAYER_TARGET_CHANGED(self,event)
 end
 
 
-function NugEnergy.UNIT_MAXPOWER(self)
-    self:SetMinMaxValues(0,GetPowerMax("player", PowerTypeIndex))
-    if not self.marks then return end
-    for _, mark in pairs(self.marks) do
-        mark:Update()
-    end
-end
-NugEnergy.NORMAL_UNIT_MAXPOWER = NugEnergy.UNIT_MAXPOWER
+-- function NugEnergy.UNIT_MAXPOWER(self)
+--     self:SetMinMaxValues(0,GetPowerMax("player", PowerTypeIndex))
+--     if not self.marks then return end
+--     for _, mark in pairs(self.marks) do
+--         mark:Update()
+--     end
+-- end
 
 local fader = CreateFrame("Frame", nil, NugEnergy)
 NugEnergy.fader = fader
@@ -916,11 +993,11 @@ function NugEnergy:UpdateVisibility()
     local inCombat = UnitAffectingCombat("player")
     upvalueInCombat = inCombat
     if (inCombat or
-        ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (isClassic or (shouldBeFull and not isFull))) or
+        ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (self.ticker.isEnabled or (shouldBeFull and not isFull))) or
         ForcedToShow)
         and PowerFilter
     then
-        self:UNIT_MAXPOWER()
+        -- self:UNIT_MAXPOWER()
         self:UpdateEnergy()
         self:StopHiding()
         self:SetAlpha(1)
@@ -1321,7 +1398,7 @@ function NugEnergy.Create(self)
 
     f.trail = trail
     f.marks = {}
-    f:UNIT_MAXPOWER()
+    -- f:UNIT_MAXPOWER()
     -- NEW MARKS
     -- for p in pairs(NugEnergy.db.profile_Character.marks) do
     --     self:CreateMark(p)
@@ -1736,18 +1813,18 @@ function NugEnergy.CreateMark(self, at)
         m:SetAlpha(0.6)
 
         local texture = m:CreateTexture(nil, "OVERLAY")
-		texture:SetTexture("Interface\\AddOns\\NugEnergy\\mark")
+        texture:SetTexture("Interface\\AddOns\\NugEnergy\\mark")
         texture:SetVertexColor(1,1,1,0.3)
         texture:SetAllPoints(m)
         m.texture = texture
 
         local spark = m:CreateTexture(nil, "OVERLAY")
-		spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
+        spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
         spark:SetAlpha(0)
         spark:SetWidth(20)
         spark:SetHeight(m:GetHeight()*2.7)
         spark:SetPoint("CENTER",m)
-		spark:SetBlendMode('ADD')
+        spark:SetBlendMode('ADD')
         m.spark = spark
 
         local ag = spark:CreateAnimationGroup()
@@ -2428,9 +2505,9 @@ function NugEnergy:SPELLS_CHANGED()
 end
 
 function NugEnergy:Disable()
-	-- GetComboPoints = dummy -- disable
+    -- GetComboPoints = dummy -- disable
     self.isDisabled = true
-	-- self:Hide()
+    -- self:Hide()
 end
 
 function NugEnergy:Enable()
@@ -2478,6 +2555,8 @@ end
 function NugEnergy:ResetConfig()
     table.wipe(self.flags)
     self.eventProxy:UnregisterAllEvents()
+    self.eventProxy:SetScript("OnUpdate", nil)
+    self:UpdateBarEffects()
     self.ticker:Disable()
 end
 
