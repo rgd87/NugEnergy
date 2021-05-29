@@ -28,8 +28,8 @@ LSM:Register("statusbar", "NugEnergyVertical", [[Interface\AddOns\NugEnergy\vsta
 
 LSM:Register("font", "OpenSans Bold", [[Interface\AddOns\NugEnergy\OpenSans-Bold.ttf]], GetLocale() ~= "enUS" and 15)
 
-local getStatusbar = function() return LSM:Fetch("statusbar", NugEnergyDB.textureName) end
-local getFont = function() return LSM:Fetch("font", NugEnergyDB.fontName) end
+local getStatusbar = function() return LSM:Fetch("statusbar", NugEnergy.db.profile.textureName) end
+local getFont = function() return LSM:Fetch("font", NugEnergy.db.profile.fontName) end
 
 -- local getStatusbar = function() return [[Interface\AddOns\NugEnergy\statusbar.tga]] end
 -- local getFont = function() return [[Interface\AddOns\NugEnergy\Emblem.ttf]] end
@@ -59,6 +59,15 @@ local execute = false
 local execute_range = nil
 local upvalueInCombat = nil
 
+local tickerEnabled
+local twEnabled
+local twEnabledCappedOnly
+local twStart
+local twLength
+local twCrossfade
+local twChangeColor
+local twPlaySound
+
 local EPT = Enum.PowerType
 local Enum_PowerType_Insanity = EPT.Insanity
 local Enum_PowerType_Energy = EPT.Energy
@@ -71,61 +80,79 @@ local UnitAura = UnitAura
 local ColorArray = function(color) return {color.r, color.g, color.b} end
 
 local defaults = {
-    point = "CENTER",
-    x = 0, y = 0,
-    marks = {},
-    focus = true,
-    rage = true,
-    mana = false,
-    energy = true,
-    fury = true,
-    shards = false,
-    runic = true,
-    balance = true,
-    insanity = true,
-    maelstrom = true,
-    -- powerTypeColors = true,
-    -- focusColor = true
-
-    hideText = false,
-    hideBar = false,
-    enableClassicTicker = true,
-    spenderFeedback = not isClassic,
-    borderType = "2PX",
-    smoothing = true,
-    smoothingSpeed = 6, -- 1 - 8
-
-    width = 100,
-    height = 30,
-    normalColor = { 0.9, 0.1, 0.1 }, --1
-    altColor = { 0.9, 0.168, 0.43 }, -- for dispatch and meta 2
-    maxColor = { 131/255, 0.2, 0.2 }, --max color 3
-    lowColor = { 141/255, 31/255, 62/255 }, --low color 4
-    enableColorByPowerType = false,
-    powerTypeColors = {
-        ["ENERGY"] = ColorArray(PowerBarColor["ENERGY"]),
-        ["FOCUS"] = ColorArray(PowerBarColor["FOCUS"]),
-        ["RAGE"] = ColorArray(PowerBarColor["RAGE"]),
-        ["RUNIC_POWER"] = ColorArray(PowerBarColor["RUNIC_POWER"]),
-        ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
-        ["FURY"] = ColorArray(PowerBarColor["FURY"]),
-        ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
-        ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
-        ["MANA"] = ColorArray(PowerBarColor["MANA"]),
+    global = {
+        classConfig = {
+            ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
+            DRUID = { "Disabled", "Disabled", "Disabled", "Disabled" },
+            PALADIN = { "Disabled", "Disabled", "Disabled" },
+            MONK = { "Disabled", "Disabled", "Disabled" },
+            WARLOCK = { "Disabled", "Disabled", "Disabled" },
+            DEMONHUNTER = { "Disabled", "SoulFragments" },
+            DEATHKNIGHT = { "Disabled", "Disabled", "Disabled" },
+            MAGE = { "Disabled", "Disabled", "Disabled" },
+            WARRIOR = { "Disabled", "Disabled", "Disabled" },
+            SHAMAN = { "Disabled", "Disabled", "Disabled" },
+            HUNTER = { "Disabled", "Disabled", "Disabled" },
+            PRIEST = { "Disabled", "Disabled", "Disabled" },
+        },
     },
-    textureName = "Glamour7",
-    fontName = "OpenSans Bold",
-    fontSize = 25,
-    textAlign = "END",
-    textOffsetX = 0,
-    textOffsetY = 0,
-    textColor = {1,1,1, isClassic and 0.8 or 0.3},
-    outOfCombatAlpha = 0,
-    isVertical = false,
+    profile = {
+        point = "CENTER",
+        x = 0, y = 0,
+        marks = {},
+        focus = true,
+        rage = true,
+        mana = false,
+        energy = true,
+        fury = true,
+        shards = false,
+        runic = true,
+        balance = true,
+        insanity = true,
+        maelstrom = true,
+        -- powerTypeColors = true,
+        -- focusColor = true
+
+        hideText = false,
+        hideBar = false,
+        enableClassicTicker = true,
+        spenderFeedback = not isClassic,
+        borderType = "2PX",
+        smoothing = true,
+        smoothingSpeed = 6, -- 1 - 8
+
+        width = 100,
+        height = 30,
+        normalColor = { 0.9, 0.1, 0.1 }, --1
+        altColor = { 0.9, 0.168, 0.43 }, -- for dispatch and meta 2
+        maxColor = { 131/255, 0.2, 0.2 }, --max color 3
+        lowColor = { 141/255, 31/255, 62/255 }, --low color 4
+        enableColorByPowerType = false,
+        powerTypeColors = {
+            ["ENERGY"] = ColorArray(PowerBarColor["ENERGY"]),
+            ["FOCUS"] = ColorArray(PowerBarColor["FOCUS"]),
+            ["RAGE"] = ColorArray(PowerBarColor["RAGE"]),
+            ["RUNIC_POWER"] = ColorArray(PowerBarColor["RUNIC_POWER"]),
+            ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
+            ["FURY"] = ColorArray(PowerBarColor["FURY"]),
+            ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
+            ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
+            ["MANA"] = ColorArray(PowerBarColor["MANA"]),
+        },
+        textureName = "Glamour7",
+        fontName = "OpenSans Bold",
+        fontSize = 25,
+        textAlign = "END",
+        textOffsetX = 0,
+        textOffsetY = 0,
+        textColor = {1,1,1, isClassic and 0.8 or 0.3},
+        outOfCombatAlpha = 0,
+        isVertical = false,
+    }
 }
-local normalColor = defaults.normalColor
-local lowColor = defaults.lowColor
-local maxColor = defaults.maxColor
+local normalColor = defaults.profile.normalColor
+local lowColor = defaults.profile.lowColor
+local maxColor = defaults.profile.maxColor
 local free_marks = {}
 
 local function SetupDefaults(t, defaults)
@@ -163,8 +190,11 @@ end
 
 
 function NugEnergy.PLAYER_LOGIN(self,event)
-    NugEnergyDB = NugEnergyDB or {}
-    SetupDefaults(NugEnergyDB, defaults)
+    _G.NugEnergyDB = _G.NugEnergyDB or {}
+    self:DoMigrations(NugEnergyDB)
+    self.db = LibStub("AceDB-3.0"):New("NugEnergyDB", defaults, "Default") -- Create a DB using defaults and using a shared default profile
+    -- NugEnergyDB = self.db
+    -- SetupDefaults(NugEnergyDB, defaults)
 
     local res = GetCVar("gxWindowedResolution")
     if res then
@@ -172,8 +202,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
         pmult = (768/h) / UIParent:GetScale()
     end
 
-    NugEnergyDB_Character = NugEnergyDB_Character or {}
-    NugEnergyDB_Character.marks = NugEnergyDB_Character.marks or { [0] = {}, [1] = {}, [2] = {}, [3] = {}, [4] = {} }
+
     if not isClassic then
         self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
     end
@@ -196,14 +225,14 @@ function NugEnergy.PLAYER_LOGIN(self,event)
         end)
 end
 
-function NugEnergy.PLAYER_LOGOUT(self, event)
-    RemoveDefaults( NugEnergyDB, defaults)
-end
+-- function NugEnergy.PLAYER_LOGOUT(self, event)
+--     RemoveDefaults( NugEnergyDB, defaults)
+-- end
 
 function NugEnergy:UpdateUpvalues()
-    isVertical = NugEnergyDB.isVertical
-    onlyText = NugEnergyDB.hideBar
-    spenderFeedback = NugEnergyDB.spenderFeedback
+    isVertical = NugEnergy.db.profile.isVertical
+    onlyText = NugEnergy.db.profile.hideBar
+    spenderFeedback = NugEnergy.db.profile.spenderFeedback
 end
 
 
@@ -251,6 +280,7 @@ end
 
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
+local heartbeatPlayed = false
 local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
     return function(unit)
         local p = GetTime() - lastEnergyTickTime
@@ -262,12 +292,36 @@ local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, th
         return p, p2, execute, shine, capped, (minLimit and p2 < minLimit)
     end
 end
+
+local UNIT_MAXPOWER_ClassicTicker = function(self)
+    self:SetMinMaxValues(0, 2)
+end
+
+local tickFiltering = true
 local ClassicTickerFrame = CreateFrame("Frame")
 local ClassicTickerOnUpdate = function(self)
     local currentEnergy = UnitPower("player", PowerTypeIndex)
     local now = GetTime()
-    if currentEnergy > lastEnergyValue or now >= lastEnergyTickTime + 2 then
+    local possibleTick = false
+    if currentEnergy > lastEnergyValue then
+        if PowerTypeIndex == Enum_PowerType_Energy and tickFiltering then
+            local diff = currentEnergy - lastEnergyValue
+            if  (diff > 18 and diff < 22) or -- normal tick
+                (diff > 38 and diff < 42) or -- adr rush
+                (diff < 42 and currentEnergy == UnitPowerMax("player", PowerTypeIndex)) -- including tick to cap, but excluding thistle tea
+            then
+                possibleTick = true
+            end
+        else
+            possibleTick = true
+        end
+    end
+    if now >= lastEnergyTickTime + 2 then
+        possibleTick = true
+    end
+    if possibleTick then
         lastEnergyTickTime = now
+        heartbeatPlayed = false
     end
     lastEnergyValue = currentEnergy
 end
@@ -279,77 +333,90 @@ ClassicTickerFrame.Disable = function(self)
     self:SetScript("OnUpdate", nil)
     self.isEnabled = false
 end
-local UNIT_MAXPOWER_ClassicTicker = function(self)
-    self:SetMinMaxValues(0, 2)
-end
+NugEnergy.ticker = ClassicTickerFrame
 
 function NugEnergy.Initialize(self)
-    self:RegisterEvent("UNIT_POWER_UPDATE")
-    self:RegisterEvent("UNIT_MAXPOWER")
+    -- self:RegisterEvent("UNIT_POWER_UPDATE")
+    -- self:RegisterEvent("UNIT_MAXPOWER")
     self:RegisterEvent("PLAYER_REGEN_ENABLED")
     self:RegisterEvent("PLAYER_REGEN_DISABLED")
     self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
     self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
 
+    self:RegisterEvent("SPELLS_CHANGED")
+
     if not self.initialized then
         self:Create()
+        self.eventProxy = CreateFrame("Frame", nil, self)
+        self.eventProxy:SetScript("OnEvent", function(proxy, event, ...)
+            return proxy[event](self, event, ...)
+        end)
+
+        self.flags = setmetatable({}, {
+            __index = function(t,k)
+                return NugEnergy.db.profile[k]
+            end
+        })
+        -- flags = self.flags
+
         self.initialized = true
         self:SetNormalColor()
     end
 
 
-    if class == "ROGUE" and NugEnergyDB.energy then
-        PowerFilter = "ENERGY"
-        self:SetNormalColor()
-        PowerTypeIndex = Enum.PowerType.Energy
-        shouldBeFull = true
-        self:RegisterEvent("UPDATE_STEALTH")
-        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+    --[===[
+    if class == "ROGUE" and NugEnergy.db.profile.energy then
+        -- PowerFilter = "ENERGY"
+        -- self:SetNormalColor()
+        -- PowerTypeIndex = Enum.PowerType.Energy
+        -- shouldBeFull = true
+        -- self:RegisterEvent("UPDATE_STEALTH")
+        -- self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
 
-        self.SPELLS_CHANGED = function(self)
-            local spec = GetSpecialization()
-            self:UnregisterEvent("UNIT_HEALTH")
-            self:UnregisterEvent("UNIT_AURA")
-            self:RegisterEvent("PLAYER_TARGET_CHANGED")
-            if spec == 1 and IsPlayerSpell(111240) then --blindside
-                execute_range = 0.30
-                self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:UnregisterEvent("UNIT_AURA")
-            elseif spec == 3 then
-                self:RegisterUnitEvent("UNIT_AURA", "player")
-                self:UnregisterEvent("UNIT_HEALTH")
-                self.UNIT_AURA = function(self, event, unit)
-                    execute = ( FindAura("player", 185422, "HELPFUL") ~= nil)
-                    self:UpdateEnergy()
-                end
-            else
-                execute_range = nil
-                execute = nil
-                self:UnregisterEvent("PLAYER_TARGET_CHANGED")
-            end
-        end
+        -- self.SPELLS_CHANGED = function(self)
+        --     local spec = GetSpecialization()
+        --     self:UnregisterEvent("UNIT_HEALTH")
+        --     self:UnregisterEvent("UNIT_AURA")
+        --     self:RegisterEvent("PLAYER_TARGET_CHANGED")
+        --     if spec == 1 and IsPlayerSpell(111240) then --blindside
+        --         execute_range = 0.30
+        --         self:RegisterUnitEvent("UNIT_HEALTH", "target")
+        --         self:UnregisterEvent("UNIT_AURA")
+        --     elseif spec == 3 then
+        --         self:RegisterUnitEvent("UNIT_AURA", "player")
+        --         self:UnregisterEvent("UNIT_HEALTH")
+        --         self.UNIT_AURA = function(self, event, unit)
+        --             execute = ( FindAura("player", 185422, "HELPFUL") ~= nil)
+        --             self:UpdateEnergy()
+        --         end
+        --     else
+        --         execute_range = nil
+        --         execute = nil
+        --         self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+        --     end
+        -- end
 
-        if isClassic and NugEnergyDB.enableClassicTicker then
-            GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
-            ClassicTickerFrame:Enable()
-            self:UpdateBarEffects() -- Will Disable Smoothing
-            NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
-        else
-            GetPower = RageBarGetPower(nil, 5, nil, true)
-            if ClassicTickerFrame.isEnabled then
-                ClassicTickerFrame:Disable()
-                self:UpdateBarEffects()
-            end
-            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
-            self:RegisterEvent("SPELLS_CHANGED")
-            self:SPELLS_CHANGED()
-        end
-        self:UNIT_MAXPOWER()
+        -- if isClassic and NugEnergy.db.profile.enableClassicTicker then
+        --     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
+        --     ClassicTickerFrame:Enable()
+        --     self:UpdateBarEffects() -- Will Disable Smoothing
+        --     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
+        -- else
+        --     GetPower = RageBarGetPower(nil, 5, nil, true)
+        --     if ClassicTickerFrame.isEnabled then
+        --         ClassicTickerFrame:Disable()
+        --         self:UpdateBarEffects()
+        --     end
+        --     NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
+        --     self:RegisterEvent("SPELLS_CHANGED")
+        --     self:SPELLS_CHANGED()
+        -- end
+        -- self:UNIT_MAXPOWER()
 
-    elseif class == "MAGE" and NugEnergyDB.mana then
+    elseif class == "MAGE" and NugEnergy.db.profile.mana then
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
-            if GetSpecialization() == 1 and NugEnergyDB.mana then
+            if GetSpecialization() == 1 and NugEnergy.db.profile.mana then
                 PowerFilter = "MANA"
                 PowerTypeIndex = Enum.PowerType.Mana
                 GetPower = ManaBarGetPower()
@@ -363,10 +430,10 @@ function NugEnergy.Initialize(self)
         end
         self:SPELLS_CHANGED()
 
-    elseif class == "PALADIN" and NugEnergyDB.mana then
+    elseif class == "PALADIN" and NugEnergy.db.profile.mana then
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
-            if GetSpecialization() == 1 and NugEnergyDB.mana then
+            if GetSpecialization() == 1 and NugEnergy.db.profile.mana then
                 PowerFilter = "MANA"
                 PowerTypeIndex = Enum.PowerType.Mana
                 GetPower = ManaBarGetPower()
@@ -380,7 +447,7 @@ function NugEnergy.Initialize(self)
         end
         self:SPELLS_CHANGED()
 
-    elseif class == "PRIEST" and NugEnergyDB.insanity then
+    elseif class == "PRIEST" and NugEnergy.db.profile.insanity then
         local voidform = false
         local dpCost = 50
         self.UNIT_AURA = function(self, event, unit)
@@ -398,7 +465,7 @@ function NugEnergy.Initialize(self)
                 GetPower = RageBarGetPower(30, 10, dpCost)
                 self:SetNormalColor()
                 self:RegisterUnitEvent("UNIT_AURA", "player")
-            elseif NugEnergyDB.mana then
+            elseif NugEnergy.db.profile.mana then
                 PowerFilter = "MANA"
                 PowerTypeIndex = Enum.PowerType.Mana
                 GetPower = ManaBarGetPower()
@@ -423,7 +490,7 @@ function NugEnergy.Initialize(self)
 
             -- restore to original MAXPOWER in case it was switched for classic energy
             NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
-            if newPowerType == "ENERGY" and NugEnergyDB.energy then
+            if newPowerType == "ENERGY" and NugEnergy.db.profile.energy then
                 PowerFilter = "ENERGY"
                 PowerTypeIndex = Enum.PowerType.Energy
                 self:SetNormalColor()
@@ -434,7 +501,7 @@ function NugEnergy.Initialize(self)
                 self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
                 -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
                 -- self.UpdateEnergy = self.__UpdateEnergy
-                if isClassic and NugEnergyDB.enableClassicTicker then
+                if isClassic and NugEnergy.db.profile.enableClassicTicker then
                     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
                     ClassicTickerFrame:Enable()
@@ -450,7 +517,7 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UPDATE_STEALTH()
                 self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-            elseif newPowerType =="RAGE" and NugEnergyDB.rage then
+            elseif newPowerType =="RAGE" and NugEnergy.db.profile.rage then
                 PowerFilter = "RAGE"
                 PowerTypeIndex = Enum.PowerType.Rage
                 self:SetNormalColor()
@@ -465,7 +532,7 @@ function NugEnergy.Initialize(self)
                 self:UnregisterEvent("UNIT_POWER_FREQUENT")
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
-            elseif GetSpecialization() == 1 and NugEnergyDB.balance then
+            elseif GetSpecialization() == 1 and NugEnergy.db.profile.balance then
                 self:RegisterEvent("UNIT_POWER_UPDATE")
                 self:RegisterEvent("UNIT_MAXPOWER")
                 GetPower = RageBarGetPower(30, 10, 40)
@@ -479,7 +546,7 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
-            elseif NugEnergyDB.mana then
+            elseif NugEnergy.db.profile.mana then
                 PowerFilter = "MANA"
                 PowerTypeIndex = Enum.PowerType.Mana
                 GetPower = ManaBarGetPower()
@@ -503,7 +570,7 @@ function NugEnergy.Initialize(self)
             C_Timer.After(2, function() self:UNIT_DISPLAYPOWER() end)
         end
 
-    elseif class == "DEMONHUNTER" and NugEnergyDB.fury then
+    elseif class == "DEMONHUNTER" and NugEnergy.db.profile.fury then
         self:RegisterEvent("UNIT_POWER_FREQUENT")
         GetPower = RageBarGetPower(30, 10)
         PowerFilter = "FURY"
@@ -511,7 +578,7 @@ function NugEnergy.Initialize(self)
         self:SetNormalColor()
         self:UpdateEnergy()
 
-    elseif class == "MONK" and NugEnergyDB.energy then
+    elseif class == "MONK" and NugEnergy.db.profile.energy then
         self:RegisterEvent("UNIT_DISPLAYPOWER")
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = select(2,UnitPowerType("player"))
@@ -539,7 +606,7 @@ function NugEnergy.Initialize(self)
                 self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
                 self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            elseif NugEnergyDB.mana then
+            elseif NugEnergy.db.profile.mana then
                 PowerFilter = "MANA"
                 PowerTypeIndex = Enum.PowerType.Mana
                 GetPower = ManaBarGetPower()
@@ -555,7 +622,7 @@ function NugEnergy.Initialize(self)
         self:UNIT_DISPLAYPOWER()
 
     --[[
-    elseif class == "WARLOCK" and NugEnergyDB.shards then
+    elseif class == "WARLOCK" and NugEnergy.db.profile.shards then
         self:RegisterEvent("SPELLS_CHANGED")
         self.SPELLS_CHANGED = function(self)
             local spec = GetSpecialization()
@@ -572,7 +639,7 @@ function NugEnergy.Initialize(self)
         end
         self:SPELLS_CHANGED()
     ]]
-    elseif class == "DEATHKNIGHT" and NugEnergyDB.runic then
+    elseif class == "DEATHKNIGHT" and NugEnergy.db.profile.runic then
         PowerFilter = "RUNIC_POWER"
         PowerTypeIndex = Enum.PowerType.RunicPower
         self:SetNormalColor()
@@ -604,7 +671,7 @@ function NugEnergy.Initialize(self)
         end
         self:SPELLS_CHANGED()
 
-    elseif class == "WARRIOR" and NugEnergyDB.rage then
+    elseif class == "WARRIOR" and NugEnergy.db.profile.rage then
         PowerFilter = "RAGE"
         PowerTypeIndex = Enum.PowerType.Rage
         self:SetNormalColor()
@@ -636,7 +703,7 @@ function NugEnergy.Initialize(self)
         end
         self:SPELLS_CHANGED()
 
-    elseif class == "HUNTER" and NugEnergyDB.focus then
+    elseif class == "HUNTER" and NugEnergy.db.profile.focus then
         PowerFilter = "FOCUS"
         PowerTypeIndex = Enum.PowerType.Focus
         self:SetNormalColor()
@@ -644,7 +711,7 @@ function NugEnergy.Initialize(self)
         self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
         GetPower = GetPowerBy5
 
-    elseif class == "SHAMAN" and NugEnergyDB.maelstrom then
+    elseif class == "SHAMAN" and NugEnergy.db.profile.maelstrom then
         PowerFilter = "MAELSTROM"
         PowerTypeIndex = Enum.PowerType.Maelstrom
         self:SetNormalColor()
@@ -659,7 +726,7 @@ function NugEnergy.Initialize(self)
                 self:RegisterEvent("UNIT_MAXPOWER")
                 self:RegisterEvent("UNIT_POWER_FREQUENT");
                 self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            elseif NugEnergyDB.mana then
+            elseif NugEnergy.db.profile.mana then
                 PowerFilter = "MANA"
                 PowerTypeIndex = Enum.PowerType.Mana
                 GetPower = ManaBarGetPower()
@@ -680,6 +747,8 @@ function NugEnergy.Initialize(self)
         return false
     end
 
+    ]===]
+
     self:UPDATE_STEALTH()
     self:UpdateEnergy()
     return true
@@ -691,7 +760,7 @@ function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
 end
 NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER_UPDATE
 function NugEnergy.UpdateEnergy(self, elapsed)
-    local p, p2, execute, shine, capped, insufficient = GetPower("player")
+    local p, p2, _, shine, capped, insufficient = GetPower("player")
     local wasFull = isFull
     isFull = p == GetPowerMax("player", PowerTypeIndex)
     if isFull ~= wasFull then
@@ -713,7 +782,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
             c = maxColor
             self.glowanim:SetDuration(0.15)
         elseif execute then
-            c = NugEnergyDB.altColor
+            c = NugEnergy.db.profile.altColor
             self.glowanim:SetDuration(0.3)
         elseif insufficient then
             c = lowColor
@@ -808,10 +877,10 @@ local HideTimer = function(self, time)
     local nen = self:GetParent()
     local p = fadeTime - ((self.OnUpdateCounter - fadeAfter) / fadeTime)
     -- if p < 0 then p = 0 end
-    -- local ooca = NugEnergyDB.outOfCombatAlpha
+    -- local ooca = NugEnergy.db.profile.outOfCombatAlpha
     -- local a = ooca + ((1 - ooca) * p)
-    local pA = NugEnergyDB.outOfCombatAlpha
-    local rA = 1 - NugEnergyDB.outOfCombatAlpha
+    local pA = NugEnergy.db.profile.outOfCombatAlpha
+    local rA = 1 - NugEnergy.db.profile.outOfCombatAlpha
     local a = pA + (p*rA)
     nen:SetAlpha(a)
     if self.OnUpdateCounter >= fadeAfter + fadeTime then
@@ -840,6 +909,10 @@ function NugEnergy:StopHiding()
 end
 
 function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
+    self:UpdateVisibility()
+end
+
+function NugEnergy:UpdateVisibility()
     local inCombat = UnitAffectingCombat("player")
     upvalueInCombat = inCombat
     if (inCombat or
@@ -852,10 +925,10 @@ function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
         self:StopHiding()
         self:SetAlpha(1)
         self:Show()
-    elseif doFadeOut and self:IsVisible() and self:GetAlpha() > NugEnergyDB.outOfCombatAlpha and PowerFilter then
+    elseif doFadeOut and self:IsVisible() and self:GetAlpha() > NugEnergy.db.profile.outOfCombatAlpha and PowerFilter then
         self:StartHiding()
-    elseif NugEnergyDB.outOfCombatAlpha > 0 and PowerFilter then
-        self:SetAlpha(NugEnergyDB.outOfCombatAlpha)
+    elseif NugEnergy.db.profile.outOfCombatAlpha > 0 and PowerFilter then
+        self:SetAlpha(NugEnergy.db.profile.outOfCombatAlpha)
         self:Show()
     else
         self:Hide()
@@ -870,7 +943,7 @@ function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
     end
 end
 function NugEnergy.ReconfigureMarks(self)
-    -- local spec_marks = NugEnergyDB_Character.marks[GetSpecialization() or 0]
+    -- local spec_marks = NugEnergy.db.profile_Character.marks[GetSpecialization() or 0]
     -- for at, frame in pairs(NugEnergy.marks) do
     --     frame:Hide()
     --     table.insert(free_marks, frame)
@@ -968,21 +1041,21 @@ end
 
 
 function NugEnergy:SetNormalColor()
-    if NugEnergyDB.enableColorByPowerType and PowerFilter then
-        normalColor = NugEnergyDB.powerTypeColors[PowerFilter]
+    if NugEnergy.db.profile.enableColorByPowerType and PowerFilter then
+        normalColor = NugEnergy.db.profile.powerTypeColors[PowerFilter]
         lowColor = { hsv_shift(normalColor, -0.07, -0.22, -0.3) }
         maxColor = { hsv_shift(normalColor, 0, -0.3, -0.4) }
     else
-        normalColor = NugEnergyDB.normalColor
-        lowColor = NugEnergyDB.lowColor
-        maxColor = NugEnergyDB.maxColor
+        normalColor = NugEnergy.db.profile.normalColor
+        lowColor = NugEnergy.db.profile.lowColor
+        maxColor = NugEnergy.db.profile.maxColor
     end
 end
 
 function NugEnergy:Resize()
     local f = self
-    local width = NugEnergyDB.width
-    local height = NugEnergyDB.height
+    local width = NugEnergy.db.profile.width
+    local height = NugEnergy.db.profile.height
     local text = f.text
     if isVertical then
         height, width = width, height
@@ -999,15 +1072,15 @@ function NugEnergy:Resize()
         end
 
         text:ClearAllPoints()
-        local textAlign = NugEnergyDB.textAlign
+        local textAlign = NugEnergy.db.profile.textAlign
         if textAlign == "END" then
-            text:SetPoint("TOP", f, "TOP", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
+            text:SetPoint("TOP", f, "TOP", 0+NugEnergy.db.profile.textOffsetX, 0+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyV("TOP")
         elseif textAlign == "CENTER" then
-            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
+            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergy.db.profile.textOffsetX, 0+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyV("CENTER")
         elseif textAlign == "START" then
-            text:SetPoint("BOTTOM", f, "BOTTOM", 0+NugEnergyDB.textOffsetX, 0+NugEnergyDB.textOffsetY)
+            text:SetPoint("BOTTOM", f, "BOTTOM", 0+NugEnergy.db.profile.textOffsetX, 0+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyV("BOTTOM")
         end
 
@@ -1027,15 +1100,15 @@ function NugEnergy:Resize()
         end
 
         text:ClearAllPoints()
-        local textAlign = NugEnergyDB.textAlign
+        local textAlign = NugEnergy.db.profile.textAlign
         if textAlign == "END" then
-            text:SetPoint("RIGHT", f, "RIGHT", -7+NugEnergyDB.textOffsetX, -2+NugEnergyDB.textOffsetY)
+            text:SetPoint("RIGHT", f, "RIGHT", -7+NugEnergy.db.profile.textOffsetX, -2+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyH("RIGHT")
         elseif textAlign == "CENTER" then
-            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergyDB.textOffsetX, -2+NugEnergyDB.textOffsetY)
+            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergy.db.profile.textOffsetX, -2+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyH("CENTER")
         elseif textAlign == "START" then
-            text:SetPoint("LEFT", f, "LEFT", 7+NugEnergyDB.textOffsetX, -2+NugEnergyDB.textOffsetY)
+            text:SetPoint("LEFT", f, "LEFT", 7+NugEnergy.db.profile.textOffsetX, -2+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyH("LEFT")
         end
 
@@ -1059,12 +1132,12 @@ end
 function NugEnergy:ResizeText()
     local text = self.text
     local font = getFont()
-    local fontSize = NugEnergyDB.fontSize
+    local fontSize = NugEnergy.db.profile.fontSize
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
-    local r,g,b,a = unpack(NugEnergyDB.textColor)
+    local r,g,b,a = unpack(NugEnergy.db.profile.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
-    if NugEnergyDB.hideText then
+    if NugEnergy.db.profile.hideText then
         text:Hide()
     else
         text:Show()
@@ -1087,7 +1160,7 @@ local SparkSetValue = function(self, v)
 end
 
 function NugEnergy:UpdateFrameBorder()
-    local borderType = NugEnergyDB.borderType
+    local borderType = NugEnergy.db.profile.borderType
 
     if self.border then self.border:Hide() end
     if self.backdrop then self.backdrop:Hide() end
@@ -1148,8 +1221,8 @@ end
 
 function NugEnergy.Create(self)
     local f = self
-    local width = NugEnergyDB.width
-    local height = NugEnergyDB.height
+    local width = NugEnergy.db.profile.width
+    local height = NugEnergy.db.profile.height
     if isVertical then
         height, width = width, height
         f:SetOrientation("VERTICAL")
@@ -1210,7 +1283,7 @@ function NugEnergy.Create(self)
         self.spentBar:SetVertexColor(r,g,b)
     end
 
-    local color = NugEnergyDB.normalColor
+    local color = NugEnergy.db.profile.normalColor
     f:SetColor(unpack(color))
 
 
@@ -1250,7 +1323,7 @@ function NugEnergy.Create(self)
     f.marks = {}
     f:UNIT_MAXPOWER()
     -- NEW MARKS
-    -- for p in pairs(NugEnergyDB_Character.marks) do
+    -- for p in pairs(NugEnergy.db.profile_Character.marks) do
     --     self:CreateMark(p)
     -- end
     NugEnergy:ReconfigureMarks()
@@ -1350,25 +1423,25 @@ function NugEnergy.Create(self)
 
     local text = pf:CreateFontString(nil, "OVERLAY")
     local font = getFont()
-    local fontSize = NugEnergyDB.fontSize
+    local fontSize = NugEnergy.db.profile.fontSize
     text:SetFont(font,fontSize, textoutline and "OUTLINE")
 
-    local r,g,b,a = unpack(NugEnergyDB.textColor)
+    local r,g,b,a = unpack(NugEnergy.db.profile.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
     f.text = text
 
     NugEnergy:Resize()
 
-    if NugEnergyDB.hideText then
+    if NugEnergy.db.profile.hideText then
         text:Hide()
     else
         text:Show()
     end
 
-    f:SetPoint(NugEnergyDB.point, UIParent, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y)
+    f:SetPoint(NugEnergy.db.profile.point, UIParent, NugEnergy.db.profile.point, NugEnergy.db.profile.x, NugEnergy.db.profile.y)
 
-    local oocA = NugEnergyDB.outOfCombatAlpha
+    local oocA = NugEnergy.db.profile.outOfCombatAlpha
     if oocA > 0 then
         f:SetAlpha(oocA)
     else
@@ -1382,11 +1455,11 @@ function NugEnergy.Create(self)
     f:SetScript("OnDragStop",function(self)
         self:StopMovingOrSizing();
         local _
-        _,_, NugEnergyDB.point, NugEnergyDB.x, NugEnergyDB.y = self:GetPoint(1)
+        _,_, NugEnergy.db.profile.point, NugEnergy.db.profile.x, NugEnergy.db.profile.y = self:GetPoint(1)
     end)
 end
 
-function NugEnergy:UpdateBarEffects()
+function NugEnergy:UpdateBarEffects(disableSmoothing)
     local f = self
 
     f.SetValue = f.OriginalSetValue
@@ -1429,13 +1502,13 @@ function NugEnergy:UpdateBarEffects()
         end
     end
 
-    if NugEnergyDB.smoothing and not ClassicTickerFrame.isEnabled then
+    if NugEnergy.db.profile.smoothing and not disableSmoothing then
         f.SetValueWithoutSmoothing = f.SetValue
 
         f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
         f.smoothTicker:Show()
         f.smoothTicker.parent = f
-        local animationSpeed = 1 + 8 - NugEnergyDB.smoothingSpeed
+        local animationSpeed = 1 + 8 - NugEnergy.db.profile.smoothingSpeed
         f.smoothTicker:SetScript("OnUpdate", function(self)
             local value = self.smoothTargetValue
             local bar = self.parent
@@ -1468,7 +1541,7 @@ function NugEnergy:UpdateBarEffects()
         if f.smoothTicker then f.smoothTicker:Hide() end
     end
 
-    if NugEnergyDB.spenderFeedback then
+    if NugEnergy.db.profile.spenderFeedback then
         f.SetValueWithoutSpenderFeedback = f.SetValue
         f.SetValue = function(self, new)
             local cur = self:GetValue()
@@ -1541,7 +1614,7 @@ NugEnergy.Commands = {
         local p = ParseOpts(v)
         local at = p["at"]
         if at then
-            NugEnergyDB_Character.marks[GetSpecialization() or 0][at] = true
+            NugEnergy.db.profile_Character.marks[GetSpecialization() or 0][at] = true
             NugEnergy:CreateMark(at)
         end
     end,
@@ -1549,7 +1622,7 @@ NugEnergy.Commands = {
         local p = ParseOpts(v)
         local at = p["at"]
         if at then
-            NugEnergyDB_Character.marks[GetSpecialization() or 0][at] = nil
+            NugEnergy.db.profile_Character.marks[GetSpecialization() or 0][at] = nil
             NugEnergy:ReconfigureMarks()
             -- NugEnergy.marks[at]:Hide()
             -- NugEnergy.marks[at] = nil
@@ -1557,7 +1630,7 @@ NugEnergy.Commands = {
     end,
     ["marklist"] = function(v)
         print("Current marks:")
-        for p in pairs(NugEnergyDB.marks) do
+        for p in pairs(NugEnergy.db.profile.marks) do
             print(string.format("    @%d",p))
         end
     end,
@@ -1565,48 +1638,48 @@ NugEnergy.Commands = {
         NugEnergy:SetPoint("CENTER",UIParent,"CENTER",0,0)
     end,
     ["vertical"] = function(v)
-        NugEnergyDB.isVertical = not NugEnergyDB.isVertical
-        isVertical = NugEnergyDB.isVertical
+        NugEnergy.db.profile.isVertical = not NugEnergy.db.profile.isVertical
+        isVertical = NugEnergy.db.profile.isVertical
         NugEnergy:Resize()
     end,
     ["rage"] = function(v)
-        NugEnergyDB.rage = not NugEnergyDB.rage
+        NugEnergy.db.profile.rage = not NugEnergy.db.profile.rage
         NugEnergy:Initialize()
     end,
     ["energy"] = function(v)
-        NugEnergyDB.energy = not NugEnergyDB.energy
+        NugEnergy.db.profile.energy = not NugEnergy.db.profile.energy
         NugEnergy:Initialize()
     end,
     ["focus"] = function(v)
-        NugEnergyDB.focus = not NugEnergyDB.focus
+        NugEnergy.db.profile.focus = not NugEnergy.db.profile.focus
         NugEnergy:Initialize()
     end,
     ["shards"] = function(v)
-        NugEnergyDB.shards = not NugEnergyDB.shards
+        NugEnergy.db.profile.shards = not NugEnergy.db.profile.shards
         NugEnergy:Initialize()
     end,
     ["runic"] = function(v)
-        NugEnergyDB.runic = not NugEnergyDB.runic
+        NugEnergy.db.profile.runic = not NugEnergy.db.profile.runic
         NugEnergy:Initialize()
     end,
     ["balance"] = function(v)
-        NugEnergyDB.balance = not NugEnergyDB.balance
+        NugEnergy.db.profile.balance = not NugEnergy.db.profile.balance
         NugEnergy:Initialize()
     end,
     ["insanity"] = function(v)
-        NugEnergyDB.insanity = not NugEnergyDB.insanity
+        NugEnergy.db.profile.insanity = not NugEnergy.db.profile.insanity
         NugEnergy:Initialize()
     end,
     ["mana"] = function(v)
-        NugEnergyDB.mana = not NugEnergyDB.mana
+        NugEnergy.db.profile.mana = not NugEnergy.db.profile.mana
         NugEnergy:Initialize()
     end,
     ["fury"] = function(v)
-        NugEnergyDB.fury = not NugEnergyDB.fury
+        NugEnergy.db.profile.fury = not NugEnergy.db.profile.fury
         NugEnergy:Initialize()
     end,
     ["maelstrom"] = function(v)
-        NugEnergyDB.maelstrom = not NugEnergyDB.maelstrom
+        NugEnergy.db.profile.maelstrom = not NugEnergy.db.profile.maelstrom
         NugEnergy:Initialize()
     end,
 }
@@ -1751,8 +1824,8 @@ function NugEnergy:CreateGUI()
                 name = L"Restore Defaults",
                 type = 'execute',
                 func = function()
-                    NugEnergyDB = {}
-                    SetupDefaults(NugEnergyDB, defaults)
+                    NugEnergy.db.profile = {}
+                    SetupDefaults(NugEnergy.db.profile, defaults)
                     NugEnergy:Resize()
                     NugEnergy:ResizeText()
                 end,
@@ -1772,13 +1845,13 @@ function NugEnergy:CreateGUI()
                             classColor = {
                                 name = L"Normal Color",
                                 type = 'color',
-                                disabled = function() return NugEnergyDB.enableColorByPowerType end,
+                                disabled = function() return NugEnergy.db.profile.enableColorByPowerType end,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.normalColor)
+                                    local r,g,b = unpack(NugEnergy.db.profile.normalColor)
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.normalColor = {r,g,b}
+                                    NugEnergy.db.profile.normalColor = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                                 order = 1,
@@ -1788,39 +1861,39 @@ function NugEnergy:CreateGUI()
                                 type = 'color',
                                 order = 2,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.altColor)
+                                    local r,g,b = unpack(NugEnergy.db.profile.altColor)
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.altColor = {r,g,b}
+                                    NugEnergy.db.profile.altColor = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
                             customcolor3 = {
                                 name = L"Max Color",
                                 type = 'color',
-                                disabled = function() return NugEnergyDB.enableColorByPowerType end,
+                                disabled = function() return NugEnergy.db.profile.enableColorByPowerType end,
                                 order = 3,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.maxColor)
+                                    local r,g,b = unpack(NugEnergy.db.profile.maxColor)
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.maxColor = {r,g,b}
+                                    NugEnergy.db.profile.maxColor = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
                             customcolor4 = {
                                 name = L"Insufficient Color",
                                 type = 'color',
-                                disabled = function() return NugEnergyDB.enableColorByPowerType end,
+                                disabled = function() return NugEnergy.db.profile.enableColorByPowerType end,
                                 order = 4,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.lowColor)
+                                    local r,g,b = unpack(NugEnergy.db.profile.lowColor)
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.lowColor = {r,g,b}
+                                    NugEnergy.db.profile.lowColor = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1830,11 +1903,11 @@ function NugEnergy:CreateGUI()
                                 hasAlpha = true,
                                 order = 5,
                                 get = function(info)
-                                    local r,g,b,a = unpack(NugEnergyDB.textColor)
+                                    local r,g,b,a = unpack(NugEnergy.db.profile.textColor)
                                     return r,g,b,a
                                 end,
                                 set = function(info, r, g, b, a)
-                                    NugEnergyDB.textColor = {r,g,b, a}
+                                    NugEnergy.db.profile.textColor = {r,g,b, a}
                                     NugEnergy:ResizeText()
                                 end,
                             },
@@ -1844,16 +1917,16 @@ function NugEnergy:CreateGUI()
                         name = L"Color by Power Type",
                         type = "toggle",
                         order = 1.1,
-                        get = function(info) return NugEnergyDB.enableColorByPowerType end,
+                        get = function(info) return NugEnergy.db.profile.enableColorByPowerType end,
                         set = function(info, v)
-                            NugEnergyDB.enableColorByPowerType = not NugEnergyDB.enableColorByPowerType
+                            NugEnergy.db.profile.enableColorByPowerType = not NugEnergy.db.profile.enableColorByPowerType
                             NugEnergy:SetNormalColor()
                         end
                     },
                     customColorGroup = {
                         type = "group",
                         name = "Custom Power Colors",
-                        disabled = function() return not NugEnergyDB.enableColorByPowerType end,
+                        disabled = function() return not NugEnergy.db.profile.enableColorByPowerType end,
                         order = 1.2,
                         args = {
                             Energy = {
@@ -1862,11 +1935,11 @@ function NugEnergy:CreateGUI()
                                 order = 1,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["ENERGY"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["ENERGY"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["ENERGY"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["ENERGY"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1876,11 +1949,11 @@ function NugEnergy:CreateGUI()
                                 order = 2,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["FOCUS"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["FOCUS"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["FOCUS"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["FOCUS"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1890,11 +1963,11 @@ function NugEnergy:CreateGUI()
                                 order = 3,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["RAGE"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["RAGE"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["RAGE"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["RAGE"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1904,11 +1977,11 @@ function NugEnergy:CreateGUI()
                                 order = 4,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["RUNIC_POWER"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["RUNIC_POWER"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["RUNIC_POWER"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["RUNIC_POWER"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1918,11 +1991,11 @@ function NugEnergy:CreateGUI()
                                 order = 5,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["LUNAR_POWER"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["LUNAR_POWER"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["LUNAR_POWER"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["LUNAR_POWER"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1932,11 +2005,11 @@ function NugEnergy:CreateGUI()
                                 order = 6,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["FURY"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["FURY"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["FURY"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["FURY"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1946,11 +2019,11 @@ function NugEnergy:CreateGUI()
                                 order = 7,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["INSANITY"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["INSANITY"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["INSANITY"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["INSANITY"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1960,11 +2033,11 @@ function NugEnergy:CreateGUI()
                                 order = 9,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["MAELSTROM"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["MAELSTROM"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["MAELSTROM"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["MAELSTROM"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1974,11 +2047,11 @@ function NugEnergy:CreateGUI()
                                 order = 10,
                                 width = 0.6,
                                 get = function(info)
-                                    local r,g,b = unpack(NugEnergyDB.powerTypeColors["MANA"])
+                                    local r,g,b = unpack(NugEnergy.db.profile.powerTypeColors["MANA"])
                                     return r,g,b
                                 end,
                                 set = function(info, r, g, b)
-                                    NugEnergyDB.powerTypeColors["MANA"] = {r,g,b}
+                                    NugEnergy.db.profile.powerTypeColors["MANA"] = {r,g,b}
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
@@ -1993,9 +2066,9 @@ function NugEnergy:CreateGUI()
                                 name = L"Out of Combat Alpha",
                                 desc = "0 = disabled",
                                 type = "range",
-                                get = function(info) return NugEnergyDB.outOfCombatAlpha end,
+                                get = function(info) return NugEnergy.db.profile.outOfCombatAlpha end,
                                 set = function(info, v)
-                                    NugEnergyDB.outOfCombatAlpha = tonumber(v)
+                                    NugEnergy.db.profile.outOfCombatAlpha = tonumber(v)
                                     NugEnergy:Hide()
                                     NugEnergy:UPDATE_STEALTH()
                                 end,
@@ -2008,9 +2081,9 @@ function NugEnergy:CreateGUI()
                                 type = "select",
                                 name = L"Border Type",
                                 order = 1.4,
-                                get = function(info) return NugEnergyDB.borderType end,
+                                get = function(info) return NugEnergy.db.profile.borderType end,
                                 set = function(info, value)
-                                    NugEnergyDB.borderType = value
+                                    NugEnergy.db.profile.borderType = value
                                     NugEnergy:UpdateFrameBorder()
                                 end,
                                 values = {
@@ -2027,9 +2100,9 @@ function NugEnergy:CreateGUI()
                                 type = "toggle",
                                 width = 3,
                                 order = 2,
-                                get = function(info) return NugEnergyDB.spenderFeedback end,
+                                get = function(info) return NugEnergy.db.profile.spenderFeedback end,
                                 set = function(info, v)
-                                    NugEnergyDB.spenderFeedback = not NugEnergyDB.spenderFeedback
+                                    NugEnergy.db.profile.spenderFeedback = not NugEnergy.db.profile.spenderFeedback
                                     NugEnergy:UpdateUpvalues()
                                     NugEnergy:UpdateBarEffects()
                                 end
@@ -2038,20 +2111,20 @@ function NugEnergy:CreateGUI()
                                 name = L"Smoothing",
                                 type = "toggle",
                                 order = 3,
-                                get = function(info) return NugEnergyDB.smoothing end,
+                                get = function(info) return NugEnergy.db.profile.smoothing end,
                                 set = function(info, v)
-                                    NugEnergyDB.smoothing = not NugEnergyDB.smoothing
+                                    NugEnergy.db.profile.smoothing = not NugEnergy.db.profile.smoothing
                                     NugEnergy:UpdateBarEffects()
                                 end
                             },
                             smoothingSpeed = {
                                 name = L"Animation Speed",
                                 desc = L"Higher = Faster",
-                                disabled = function() return not NugEnergyDB.smoothing end,
+                                disabled = function() return not NugEnergy.db.profile.smoothing end,
                                 type = "range",
-                                get = function(info) return NugEnergyDB.smoothingSpeed end,
+                                get = function(info) return NugEnergy.db.profile.smoothingSpeed end,
                                 set = function(info, v)
-                                    NugEnergyDB.smoothingSpeed = tonumber(v)
+                                    NugEnergy.db.profile.smoothingSpeed = tonumber(v)
                                     NugEnergy:UpdateBarEffects()
                                 end,
                                 min = 1,
@@ -2070,9 +2143,9 @@ function NugEnergy:CreateGUI()
                                 type = "select",
                                 name = L"Texture",
                                 order = 10,
-                                get = function(info) return NugEnergyDB.textureName end,
+                                get = function(info) return NugEnergy.db.profile.textureName end,
                                 set = function(info, value)
-                                    NugEnergyDB.textureName = value
+                                    NugEnergy.db.profile.textureName = value
                                     NugEnergy:Resize()
                                 end,
                                 values = LSM:HashTable("statusbar"),
@@ -2081,9 +2154,9 @@ function NugEnergy:CreateGUI()
                             width = {
                                 name = L"Width",
                                 type = "range",
-                                get = function(info) return NugEnergyDB.width end,
+                                get = function(info) return NugEnergy.db.profile.width end,
                                 set = function(info, v)
-                                    NugEnergyDB.width = tonumber(v)
+                                    NugEnergy.db.profile.width = tonumber(v)
                                     NugEnergy:Resize()
                                 end,
                                 min = 30,
@@ -2094,9 +2167,9 @@ function NugEnergy:CreateGUI()
                             height = {
                                 name = L"Height",
                                 type = "range",
-                                get = function(info) return NugEnergyDB.height end,
+                                get = function(info) return NugEnergy.db.profile.height end,
                                 set = function(info, v)
-                                    NugEnergyDB.height = tonumber(v)
+                                    NugEnergy.db.profile.height = tonumber(v)
                                     NugEnergy:Resize()
                                 end,
                                 min = 10,
@@ -2108,9 +2181,9 @@ function NugEnergy:CreateGUI()
                             --     name = "Out of Combat Alpha",
                             --     desc = "0 - hide out of combat",
                             --     type = "range",
-                            --     get = function(info) return NugEnergyDB.outOfCombatAlpha end,
+                            --     get = function(info) return NugEnergy.db.profile.outOfCombatAlpha end,
                             --     set = function(info, v)
-                            --         NugEnergyDB.outOfCombatAlpha = tonumber(v)
+                            --         NugEnergy.db.profile.outOfCombatAlpha = tonumber(v)
                             --     end,
                             --     min = 0,
                             --     max = 1,
@@ -2123,7 +2196,7 @@ function NugEnergy:CreateGUI()
                         name = L"Vertical",
                         type = "toggle",
                         order = 2.5,
-                        get = function(info) return NugEnergyDB.isVertical end,
+                        get = function(info) return NugEnergy.db.profile.isVertical end,
                         set = function(info, v) NugEnergy.Commands.vertical() end
                     },
                     textGroup = {
@@ -2136,9 +2209,9 @@ function NugEnergy:CreateGUI()
                                 name = L"Font",
                                 order = 1,
                                 desc = "Set the statusbar texture.",
-                                get = function(info) return NugEnergyDB.fontName end,
+                                get = function(info) return NugEnergy.db.profile.fontName end,
                                 set = function(info, value)
-                                    NugEnergyDB.fontName = value
+                                    NugEnergy.db.profile.fontName = value
                                     NugEnergy:ResizeText()
                                 end,
                                 values = LSM:HashTable("font"),
@@ -2148,9 +2221,9 @@ function NugEnergy:CreateGUI()
                                 name = L"Font Size",
                                 type = "range",
                                 order = 2,
-                                get = function(info) return NugEnergyDB.fontSize end,
+                                get = function(info) return NugEnergy.db.profile.fontSize end,
                                 set = function(info, v)
-                                    NugEnergyDB.fontSize = tonumber(v)
+                                    NugEnergy.db.profile.fontSize = tonumber(v)
                                     NugEnergy:ResizeText()
                                 end,
                                 min = 5,
@@ -2161,9 +2234,9 @@ function NugEnergy:CreateGUI()
                                 name = L"Hide Text",
                                 type = "toggle",
                                 order = 3,
-                                get = function(info) return NugEnergyDB.hideText end,
+                                get = function(info) return NugEnergy.db.profile.hideText end,
                                 set = function(info, v)
-                                    NugEnergyDB.hideText = not NugEnergyDB.hideText
+                                    NugEnergy.db.profile.hideText = not NugEnergy.db.profile.hideText
                                     NugEnergy:ResizeText()
                                 end
                             },
@@ -2176,9 +2249,9 @@ function NugEnergy:CreateGUI()
                                     CENTER = L"CENTER",
                                     END = L"END",
                                 },
-                                get = function(info) return NugEnergyDB.textAlign end,
+                                get = function(info) return NugEnergy.db.profile.textAlign end,
                                 set = function(info, v)
-                                    NugEnergyDB.textAlign = v
+                                    NugEnergy.db.profile.textAlign = v
                                     NugEnergy:Resize()
                                 end,
                             },
@@ -2186,9 +2259,9 @@ function NugEnergy:CreateGUI()
                                 name = L"Text Offset X",
                                 type = "range",
                                 order = 5,
-                                get = function(info) return NugEnergyDB.textOffsetX end,
+                                get = function(info) return NugEnergy.db.profile.textOffsetX end,
                                 set = function(info, v)
-                                    NugEnergyDB.textOffsetX = tonumber(v)
+                                    NugEnergy.db.profile.textOffsetX = tonumber(v)
                                     NugEnergy:Resize()
                                 end,
                                 min = -50,
@@ -2199,9 +2272,9 @@ function NugEnergy:CreateGUI()
                                 name = L"Text Offset Y",
                                 type = "range",
                                 order = 6,
-                                get = function(info) return NugEnergyDB.textOffsetY end,
+                                get = function(info) return NugEnergy.db.profile.textOffsetY end,
                                 set = function(info, v)
-                                    NugEnergyDB.textOffsetY = tonumber(v)
+                                    NugEnergy.db.profile.textOffsetY = tonumber(v)
                                     NugEnergy:Resize()
                                 end,
                                 min = -50,
@@ -2219,70 +2292,70 @@ function NugEnergy:CreateGUI()
                                 name = L"Energy",
                                 type = "toggle",
                                 order = 1,
-                                get = function(info) return NugEnergyDB.energy end,
+                                get = function(info) return NugEnergy.db.profile.energy end,
                                 set = function(info, v) NugEnergy.Commands.energy() end
                             },
                             rage = {
                                 name = L"Rage",
                                 type = "toggle",
                                 order = 2,
-                                get = function(info) return NugEnergyDB.rage end,
+                                get = function(info) return NugEnergy.db.profile.rage end,
                                 set = function(info, v) NugEnergy.Commands.rage() end
                             },
                             focus = {
                                 name = L"Focus",
                                 type = "toggle",
                                 order = 3,
-                                get = function(info) return NugEnergyDB.focus end,
+                                get = function(info) return NugEnergy.db.profile.focus end,
                                 set = function(info, v) NugEnergy.Commands.focus() end
                             },
                             fury = {
                                 name = L"Fury & Vengeance",
                                 type = "toggle",
                                 order = 4,
-                                get = function(info) return NugEnergyDB.fury end,
+                                get = function(info) return NugEnergy.db.profile.fury end,
                                 set = function(info, v) NugEnergy.Commands.fury() end
                             },
                             runic = {
                                 name = L"Runic Power",
                                 type = "toggle",
                                 order = 5,
-                                get = function(info) return NugEnergyDB.runic end,
+                                get = function(info) return NugEnergy.db.profile.runic end,
                                 set = function(info, v) NugEnergy.Commands.runic() end
                             },
                             shards = {
                                 name = L"Shards",
                                 type = "toggle",
                                 order = 6,
-                                get = function(info) return NugEnergyDB.shards end,
+                                get = function(info) return NugEnergy.db.profile.shards end,
                                 set = function(info, v) NugEnergy.Commands.shards() end
                             },
                             insanity = {
                                 name = L"Insanity",
                                 type = "toggle",
                                 order = 7,
-                                get = function(info) return NugEnergyDB.insanity end,
+                                get = function(info) return NugEnergy.db.profile.insanity end,
                                 set = function(info, v) NugEnergy.Commands.insanity() end
                             },
                             balance = {
                                 name = L"Balance",
                                 type = "toggle",
                                 order = 8,
-                                get = function(info) return NugEnergyDB.balance end,
+                                get = function(info) return NugEnergy.db.profile.balance end,
                                 set = function(info, v) NugEnergy.Commands.balance() end
                             },
                             maelstrom = {
                                 name = L"Maelstrom",
                                 type = "toggle",
                                 order = 9,
-                                get = function(info) return NugEnergyDB.maelstrom end,
+                                get = function(info) return NugEnergy.db.profile.maelstrom end,
                                 set = function(info, v) NugEnergy.Commands.maelstrom() end
                             },
                             mana = {
                                 name = L"Mana",
                                 type = "toggle",
                                 order = 10,
-                                get = function(info) return NugEnergyDB.mana end,
+                                get = function(info) return NugEnergy.db.profile.mana end,
                                 set = function(info, v) NugEnergy.Commands.mana() end
                             },
                         },
@@ -2299,4 +2372,206 @@ function NugEnergy:CreateGUI()
     local panelFrame = AceConfigDialog:AddToBlizOptions("NugEnergyOptions", "NugEnergy")
 
     return panelFrame
+end
+
+local configs = {}
+local currentConfigName
+local currentTriggerState = {}
+
+function NugEnergy:SPELLS_CHANGED()
+    local spec = GetSpecialization()
+    local class = select(2,UnitClass("player"))
+
+    -- local currentProfile = self.db:GetCurrentProfile()
+    -- local newSpecProfile = self.db.global.specProfiles[class][spec] or "Default"
+    -- if not self.db.profiles[newSpecProfile] then
+    --     self.db.global.specProfiles[class][spec] = "Default"
+    --     newSpecProfile = "Default"
+    -- end
+    -- if newSpecProfile ~= currentProfile then
+    --     self.db:SetProfile(newSpecProfile)
+    -- end
+
+    local newConfigName = self.db.global.classConfig[class][spec] or "Disabled"
+
+    -- If using missing config reset to default
+    if newConfigName ~= "Disabled" and not configs[newConfigName] then
+        self.db.global.classConfig[class][spec] = defaults.global.classConfig[class][spec]
+        newConfigName = self.db.global.classConfig[class][spec] or "Disabled"
+    end
+
+    if newConfigName == "Disabled" then
+        self:ResetConfig()
+        self:Disable()
+        currentConfigName = nil
+        return
+    else
+        self:Enable()
+    end
+
+    local currentConfig = configs[currentConfigName]
+
+    local needUpdate
+    local changedConfig = currentConfigName ~= newConfigName
+    if changedConfig then
+        needUpdate = true
+    else
+        local newTriggerState = self:GetTriggerState(currentConfig)
+        needUpdate = not self:IsTriggerStateEqual(currentTriggerState, newTriggerState)
+    end
+
+    if needUpdate then
+        self:SelectConfig(newConfigName)
+        self:UpdateEnergy()
+        self:UpdateVisibility()
+    end
+end
+
+function NugEnergy:Disable()
+	-- GetComboPoints = dummy -- disable
+    self.isDisabled = true
+	-- self:Hide()
+end
+
+function NugEnergy:Enable()
+    self.isDisabled = false
+end
+function NugEnergy:IsDisabled()
+    return self.isDisabled
+end
+
+function NugEnergy:RegisterConfig(name, config, class, specIndex)
+    config.class = class
+    config.specIndex = specIndex
+    configs[name] = config
+end
+
+function NugEnergy:GetAvailableConfigsForSpec(specIndex)
+    local _, class = UnitClass("player")
+    local avConfigs = {}
+    for name, config in pairs(configs) do
+        if config.class == class and (config.specIndex == specIndex or config.specIndex == nil) then
+            avConfigs[name] = name
+        end
+    end
+    avConfigs["Disabled"] = "Disabled"
+    return avConfigs
+end
+
+function NugEnergy:IsTriggerStateEqual(state1, state2)
+    if #state1 ~= #state2 then return false end
+    for i,v in ipairs(state1) do
+        if state2[i] ~= v then return false end
+    end
+    return true
+end
+
+function NugEnergy:GetTriggerState(config)
+    if not config.triggers then return {} end
+    local state = {}
+    for i, func in ipairs(config.triggers) do
+        table.insert(state, func())
+    end
+    return state
+end
+
+function NugEnergy:ResetConfig()
+    table.wipe(self.flags)
+    self.eventProxy:UnregisterAllEvents()
+    self.ticker:Disable()
+end
+
+function NugEnergy:SelectConfig(name)
+    self:ResetConfig()
+    self:ApplyConfig(name)
+    currentConfigName = name
+    local newConfig = configs[name]
+    currentTriggerState = self:GetTriggerState(newConfig)
+end
+
+function NugEnergy:ApplyConfig(name)
+    local config = configs[name]
+    local spec = GetSpecialization()
+    config.setup(self, spec)
+end
+
+-- function NugEnergy:SetDefaultValue(value)
+--     defaultValue = value
+-- end
+
+function NugEnergy:SetPowerFilter(powerName, powerIndex)
+    PowerFilter = powerName
+    PowerTypeIndex = powerIndex
+end
+
+function NugEnergy:GetPowerFilter()
+    return PowerFilter, PowerTypeIndex
+end
+
+
+function NugEnergy:ToggleExecute(state)
+    execute = state
+end
+
+function NugEnergy:SetPowerGetter(func)
+    GetPower = func
+end
+
+do
+    local CURRENT_DB_VERSION = 1
+    function NugEnergy:DoMigrations(db)
+        if not next(db) or db.DB_VERSION == CURRENT_DB_VERSION then -- skip if db is empty or current
+            db.DB_VERSION = CURRENT_DB_VERSION
+            return
+        end
+
+        if db.DB_VERSION == nil then
+            db.global = {}
+            db.profiles = {
+                Default = {}
+            }
+            local default_profile = db.profiles["Default"]
+            default_profile.point = db.point
+            default_profile.x = db.x
+            default_profile.y = db.y
+            default_profile.marks = db.marks
+            default_profile.hideText = db.hideText
+            default_profile.hideBar = db.hideBar
+            default_profile.enableClassicTicker = db.enableClassicTicker
+            default_profile.spenderFeedback = db.spenderFeedback
+            default_profile.borderType = db.borderType
+            default_profile.smoothing = db.smoothing
+            default_profile.smoothingSpeed = db.smoothingSpeed
+
+            default_profile.width = db.width
+            default_profile.height = db.height
+            default_profile.normalColor = db.normalColor
+            default_profile.altColor = db.altColor
+            default_profile.maxColor = db.maxColor
+            default_profile.lowColor = db.lowColor
+            default_profile.enableColorByPowerType = db.enableColorByPowerType
+            default_profile.powerTypeColors = db.powerTypeColors
+            default_profile.textureName = db.textureName
+            default_profile.fontName = db.fontName
+            default_profile.fontSize = db.fontSize
+            default_profile.textAlign = db.textAlign
+            default_profile.textOffsetX = db.textOffsetX
+            default_profile.textOffsetY = db.textOffsetY
+            default_profile.textColor = db.textColor
+            default_profile.outOfCombatAlpha = db.outOfCombatAlpha
+            default_profile.isVertical = db.isVertical
+
+            default_profile.twEnabled = db.twEnabled
+            default_profile.twEnabledCappedOnly = db.twEnabledCappedOnly
+            default_profile.twStart = db.twStart
+            default_profile.twLength = db.twLength
+            default_profile.twCrossfade = db.twCrossfade
+            default_profile.twChangeColor = db.twChangeColor
+            default_profile.soundName = db.soundName
+            default_profile.soundNameCustom = db.soundNameCustom
+            default_profile.soundChannel = db.soundChannel
+        end
+
+        db.DB_VERSION = CURRENT_DB_VERSION
+    end
 end
