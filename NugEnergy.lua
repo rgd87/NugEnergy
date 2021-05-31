@@ -46,7 +46,6 @@ NugEnergy.L = L
 
 
 NugEnergy:RegisterEvent("PLAYER_LOGIN")
-NugEnergy:RegisterEvent("PLAYER_LOGOUT")
 local UnitPower = UnitPower
 local math_modf = math.modf
 local math_abs = math.abs
@@ -74,8 +73,8 @@ local ColorArray = function(color) return {color.r, color.g, color.b} end
 local defaults = {
     global = {
         classConfig = {
-            ROGUE = { "EnergyRogueTicker", "EnergyRogueTicker", "EnergyRogueTicker" },
-            DRUID = { "Disabled", "Disabled", "Disabled", "Disabled" },
+            ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
+            DRUID = { "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic" },
             PALADIN = { "Disabled", "Disabled", "Disabled" },
             MONK = { "Disabled", "Disabled", "Disabled" },
             WARLOCK = { "Disabled", "Disabled", "Disabled" },
@@ -179,11 +178,6 @@ function NugEnergy.PLAYER_LOGIN(self,event)
         pmult = (768/h) / UIParent:GetScale()
     end
 
-
-    if APILevel >= 3 then
-        self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED") -- for mark swaps
-    end
-
     NugEnergy:UpdateUpvalues()
 
     NugEnergy:Initialize()
@@ -201,10 +195,6 @@ function NugEnergy.PLAYER_LOGIN(self,event)
             end
         end)
 end
-
--- function NugEnergy.PLAYER_LOGOUT(self, event)
---     RemoveDefaults( NugEnergyDB, defaults)
--- end
 
 function NugEnergy:UpdateUpvalues()
     isVertical = NugEnergy.db.profile.isVertical
@@ -718,7 +708,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
         -- self.spentBar:SetColor(unpack(c))
         self:SetColor(unpack(c))
 
-        if APILevel <= 2 then
+        if APILevel <= 2 and PowerTypeIndex == Enum_PowerType_Energy then
             self:ColorTickWindow(capped, c)
         end
 
@@ -727,6 +717,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
         if self.marks[p] then self.marks[p].shine:Play() end
     end
 end
+NugEnergy.Update = NugEnergy.UpdateEnergy
 NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 
 -- local idleSince = nil
@@ -758,16 +749,6 @@ NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 --         idleSince = nil
 --     end
 -- end
-
-function NugEnergy:PlaySound()
-    local sound
-    if NugEnergy.db.profile.soundName == "Heartbeat" then
-        sound = "Interface\\AddOns\\NugEnergy\\heartbeat.mp3"
-    elseif NugEnergy.db.profile.soundName then
-        sound = NugEnergy.db.profile.soundNameCustom
-    end
-    PlaySoundFile(sound, NugEnergy.db.profile.soundChannel)
-end
 
 function NugEnergy:Disable()
     PowerFilter = nil
@@ -872,12 +853,6 @@ function NugEnergy:UpdateVisibility()
     end
 end
 
-function NugEnergy.ACTIVE_TALENT_GROUP_CHANGED()
-    NugEnergy:ReconfigureMarks()
-    if NugEnergy.UNIT_DISPLAYPOWER then
-        NugEnergy:UNIT_DISPLAYPOWER()
-    end
-end
 function NugEnergy.ReconfigureMarks(self)
     -- local spec_marks = NugEnergy.db.profile_Character.marks[GetSpecialization() or 0]
     -- for at, frame in pairs(NugEnergy.marks) do
@@ -2416,6 +2391,9 @@ function NugEnergy:ResetConfig()
     self.eventProxy:SetScript("OnUpdate", nil)
     self:UpdateBarEffects()
     self.ticker:Disable()
+    if self.fsrwatch then
+        self.fsrwatch:Disable()
+    end
 end
 
 function NugEnergy:SelectConfig(name)

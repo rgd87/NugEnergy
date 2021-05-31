@@ -47,14 +47,30 @@ local ClassicTickerOnUpdate = function(self)
     end
     lastEnergyValue = currentEnergy
 end
+
+local fsrCallback
+local ClassicTickerOnUpdateFSR = function(self)
+    local now = GetTime()
+    if now >= lastEnergyTickTime + 5 then
+        self:Disable()
+        fsrCallback(NugEnergy)
+    end
+end
+
 function ClassicTickerFrame:GetLastTickTime()
     return lastEnergyTickTime
 end
 function ClassicTickerFrame:Reset()
     lastEnergyTickTime = GetTime()
 end
-function ClassicTickerFrame:Enable()
-    self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+function ClassicTickerFrame:Enable(mode, callback)
+    if mode == "FSR" then
+        self:SetScript("OnUpdate", ClassicTickerOnUpdateFSR)
+        fsrCallback = callback
+        self:Reset()
+    else
+        self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+    end
     self.isEnabled = true
 end
 function ClassicTickerFrame:Disable()
@@ -161,4 +177,53 @@ do
         end
         PlaySoundFile(sound, NugEnergy.db.profile.soundChannel)
     end
+end
+
+function NugEnergy:Make5SRWatcher(default_callback)
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetScript("OnEvent", function(self, event, ...)
+        return self[event](self, event, ...)
+    end)
+
+    local callback = default_callback
+
+    local lastManaDropTime = 0
+    local prevMana = UnitPower("player", 0)
+    f.UNIT_SPELLCAST_SUCCEEDED = function(self, event, unit)
+        if unit == "player" then
+            local now = GetTime()
+            if now - lastManaDropTime < 0.01 then
+                callback(NugEnergy)
+            end
+        end
+    end
+    f.UNIT_POWER_UPDATE = function(self, event, unit, ptype)
+        if ptype == "MANA" then
+            local mana = UnitPower("player", 0)
+            if mana < prevMana then
+                lastManaDropTime = GetTime()
+            end
+            prevMana = mana
+        end
+    end
+
+    f.Enable = function(self, new_callback)
+        self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        self:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+        if new_callback then
+            callback = new_callback
+        end
+    end
+    f.Disable = function(self)
+        self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        self:UnregisterEvent("UNIT_POWER_UPDATE")
+    end
+
+    f.GetLastManaSpentTime = function(self)
+        return lastManaDropTime
+    end
+
+    f:Enable()
+
+    return f
 end
