@@ -526,9 +526,6 @@ function NugEnergy.Initialize(self)
                     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
                     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
                     self:UnregisterEvent("UNIT_POWER_FREQUENT")
-                    if APILevel == 2 then
-                        lastEnergyTickTime = GetTime()
-                    end
                     self:SetScript("OnUpdate",self.UpdateEnergy)
                     ClassicTickerFrame:Enable(true)
                     self:UpdateBarEffects()
