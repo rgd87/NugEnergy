@@ -1,4 +1,4 @@
-## Interface: 90200
+## Interface: 20504
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
