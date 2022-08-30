@@ -437,7 +437,7 @@ end
 -----------------------------------------------
 --  CLASSIC AND THE BURNING CRUSADE
 -----------------------------------------------
-if APILevel <= 2 then
+if APILevel <= 3 then
 
 
     NugEnergy:RegisterConfig("EnergyRogue", {
@@ -461,6 +461,16 @@ if APILevel <= 2 then
             self.eventProxy.UNIT_POWER_FREQUENT = FILTERED_UNIT_POWER_UPDATE("ENERGY")
 
             self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Energy, nil, 5, nil, true))
+
+            local isTickerEnabled = self.db.profile.enableClassicTicker
+            if isTickerEnabled and APILevel <= 2 then
+                self:SetPowerGetter(GetPower_ClassicRogueTicker(Enum.PowerType.Energy, nil, 19, 0, false))
+                self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
+                self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
+                self:SetMinMaxValues(0, 2)
+                self.ticker:Enable()
+                self:UpdateBarEffects("DISABLE_SMOOTHING")
+            end
         end,
     }, "ROGUE")
 
@@ -483,20 +493,6 @@ if APILevel <= 2 then
             -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
         end,
     }, "GENERAL")
-
-    NugEnergy:RegisterConfig("EnergyRogueTicker", {
-        triggers = { GetSpecialization, GetSpell(193531) }, -- Deeper Stratagem,
-        setup = function(self, spec)
-            self:ApplyConfig("EnergyRogue")
-
-            self:SetPowerGetter(GetPower_ClassicRogueTicker(Enum.PowerType.Energy, nil, 19, 0, false))
-            self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
-            self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
-            self:SetMinMaxValues(0, 2)
-            self.ticker:Enable()
-            self:UpdateBarEffects("DISABLE_SMOOTHING")
-        end,
-    }, "ROGUE")
 
 
     local GetPower_ClassicMana = function(unit)
@@ -634,8 +630,8 @@ if APILevel <= 2 then
                 self:ResetConfig()
 
                 if newPowerType == "ENERGY" then
-                    self:ApplyConfig("EnergyRogueTicker")
-                    if APILevel == 2 then
+                    self:ApplyConfig("EnergyRogue")
+                    if APILevel == 2 and self.ticker then
                         self.ticker:Reset()
                     end
                     self:Update()

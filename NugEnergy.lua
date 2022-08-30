@@ -13,6 +13,8 @@ local isVertical
 local APILevel = math.floor(select(4,GetBuildInfo())/10000)
 local isClassic = APILevel <= 3
 local GetSpecialization = isClassic and function() return 1 end or _G.GetSpecialization
+local GetNumSpecializations = isClassic and function() return 1 end or _G.GetNumSpecializations
+local GetSpecializationInfo = isClassic and function() return nil end or _G.GetSpecializationInfo
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -2252,7 +2254,7 @@ function NugEnergy:CreateGUI()
     for specIndex=1,GetNumSpecializations() do
         local id, name, description, icon = GetSpecializationInfo(specIndex)
         local iconCoords = nil
-        if APILevel <= 2 then
+        if APILevel <= 3 then
             icon = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
             local _, class = UnitClass('player')
             iconCoords = CLASS_ICON_TCOORDS[class];
@@ -2298,6 +2300,161 @@ function NugEnergy:CreateGUI()
         -- }
     end
 
+    if APILevel <= 2 then
+        opt.args.ticker = {
+            type = "group",
+            name = L"",
+            guiInline = true,
+            order = 5,
+            args = {
+                ticker = {
+                    name = L"Energy Ticker",
+                    type = "toggle",
+                    width = "full",
+                    order = 0,
+                    get = function(info) return NugEnergy.db.profile.enableClassicTicker end,
+                    set = function(info, v)
+                        NugEnergy.db.profile.enableClassicTicker = not NugEnergy.db.profile.enableClassicTicker
+                        NugEnergy:UpdateConfig(true)
+                    end
+                },
+                twGroup = {
+                    type = "group",
+                    name = L"Tick Window",
+                    disabled = function() return not NugEnergy.db.profile.enableClassicTicker end,
+                    guiInline = true,
+                    order = 5,
+                    args = {
+                        twEnabled = {
+                            name = L"Enabled",
+                            type = "toggle",
+                            order = 1,
+                            get = function(info) return NugEnergyDB.twEnabled end,
+                            set = function(info, v)
+                                NugEnergy.db.profile.twEnabled = not NugEnergy.db.profile.twEnabled
+                                NugEnergy:UpdateUpvalues()
+                            end
+                        },
+                        twEnabledCappedOnly = {
+                            name = L"Only If Capping",
+                            type = "toggle",
+                            width = "double",
+                            order = 2,
+                            get = function(info) return NugEnergy.db.profile.twEnabledCappedOnly end,
+                            set = function(info, v)
+                                NugEnergy.db.profile.twEnabledCappedOnly = not NugEnergy.db.profile.twEnabledCappedOnly
+                                NugEnergy:UpdateUpvalues()
+                            end
+                        },
+
+                        twChangeColor = {
+                            name = L"Change Color",
+                            type = "toggle",
+                            width = "full",
+                            order = 2.3,
+                            get = function(info) return NugEnergy.db.profile.twChangeColor end,
+                            set = function(info, v)
+                                NugEnergy.db.profile.twChangeColor = not NugEnergy.db.profile.twChangeColor
+                                NugEnergy:UpdateUpvalues()
+                            end
+                        },
+                        soundNameFull = {
+                            name = L"Sound",
+                            type = 'select',
+                            order = 7.5,
+                            values = {
+                                none = "None",
+                                Heartbeat = "Heartbeat",
+                                custom = "Custom",
+                            },
+                            get = function(info)
+                                return NugEnergy.db.profile.soundName
+                            end,
+                            set = function( info, v )
+                                NugEnergy.db.profile.soundName = v
+                                NugEnergy:UpdateUpvalues()
+                            end,
+                        },
+                        PlayButton = {
+                            name = L"Play",
+                            type = 'execute',
+                            width = "half",
+                            order = 7.7,
+                            disabled = function() return (NugEnergy.db.profile.soundNameFull == "none") end,
+                            func = function()
+                                NugEnergy:PlaySound()
+                            end,
+                        },
+                        soundChannel = {
+                            name = L"Sound Channel",
+                            type = 'select',
+                            order = 7.6,
+                            values = {
+                                SFX = "SFX",
+                                Music = "Music",
+                                Ambience = "Ambience",
+                                Master = "Master",
+                            },
+                            get = function(info) return NugEnergy.db.profile.soundChannel end,
+                            set = function( info, v ) NugEnergy.db.profile.soundChannel = v end,
+                        },
+                        customsoundNameFull = {
+                            name = L"Custom Sound",
+                            type = 'input',
+                            width = "full",
+                            order = 7.8,
+                            disabled = function() return (NugEnergy.db.profile.soundName ~= "custom") end,
+                            get = function(info) return NugEnergy.db.profile.soundNameCustom end,
+                            set = function( info, v )
+                                NugEnergy.db.profile.soundNameCustom = v
+                            end,
+                        },
+
+                        twStart = {
+                            name = L"Start Time",
+                            type = "range",
+                            get = function(info) return NugEnergy.db.profile.twStart end,
+                            set = function(info, v)
+                                NugEnergy.db.profile.twStart = tonumber(v)
+                                NugEnergy:UpdateUpvalues()
+                            end,
+                            min = 0,
+                            max = 2,
+                            step = 0.01,
+                            order = 3,
+                        },
+                        twLength = {
+                            name = L"Window Length",
+                            type = "range",
+                            get = function(info) return NugEnergy.db.profile.twLength end,
+                            set = function(info, v)
+                                NugEnergy.db.profile.twLength = tonumber(v)
+                                NugEnergy:UpdateUpvalues()
+                            end,
+                            min = 0,
+                            max = 1,
+                            step = 0.01,
+                            order = 4,
+                        },
+                        twCrossfade = {
+                            name = L"Crossfade Length",
+                            type = "range",
+                            get = function(info) return NugEnergy.db.profile.twCrossfade end,
+                            set = function(info, v)
+                                NugEnergy.db.profile.twCrossfade = tonumber(v)
+                                NugEnergy:UpdateUpvalues()
+                            end,
+                            min = 0,
+                            max = 0.5,
+                            step = 0.01,
+                            order = 5,
+                        },
+                    },
+                }
+            },
+        }
+    end
+
     local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
     AceConfigRegistry:RegisterOptionsTable("NugEnergyOptions", opt)
 
@@ -2312,6 +2469,9 @@ local currentConfigName
 local currentTriggerState = {}
 
 function NugEnergy:SPELLS_CHANGED()
+    self:UpdateConfig()
+end
+function NugEnergy:UpdateConfig(force)
     local spec = GetSpecialization()
     local class = select(2,UnitClass("player"))
 
@@ -2353,7 +2513,7 @@ function NugEnergy:SPELLS_CHANGED()
         needUpdate = not self:IsTriggerStateEqual(currentTriggerState, newTriggerState)
     end
 
-    if needUpdate then
+    if needUpdate or force then
         self:SelectConfig(newConfigName)
         self:UpdateEnergy()
         self:UpdateVisibility()
