@@ -163,19 +163,13 @@ if APILevel <= 3 then
         MONK = { "Disabled", "Disabled", "Disabled" },
         WARLOCK = { "Disabled", "Disabled", "Disabled" },
         DEMONHUNTER = { "Disabled", "Disabled" },
-        DEATHKNIGHT = { "Disabled", "Disabled", "Disabled" },
-        MAGE = { "ArcaneBlastClassic", "ArcaneBlastClassic", "ArcaneBlastClassic" },
+        DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
+        MAGE = { "Disabled", "Disabled", "Disabled" },
         WARRIOR = { "RageWarriorClassic", "RageWarriorClassic", "RageWarriorClassic" },
         SHAMAN = { "Disabled", "Disabled", "Disabled" },
         HUNTER = { "Disabled", "Disabled", "Disabled" },
         PRIEST = { "Disabled", "Disabled", "Disabled" },
     }
-    if APILevel == 1 then
-        defaults.global.classConfig.MAGE = { "Disabled", "Disabled", "Disabled" }
-    end
-    if APILevel <= 2 then
-        defaults.global.classConfig.SHAMAN = { "Disabled", "Disabled", "Disabled" }
-    end
 end
 
 local normalColor = defaults.profile.normalColor

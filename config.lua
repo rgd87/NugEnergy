@@ -649,4 +649,21 @@ if APILevel <= 3 then
         end
     }, "DRUID")
 
+    NugEnergy:RegisterConfig("RunicPower", {
+        triggers = { GetSpecialization },
+        setup = function(self, spec)
+            self:SetPowerFilter("RUNIC_POWER", Enum.PowerType.RunicPower)
+            self:SetNormalColor()
+
+            self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+            self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+            GENERAL_UNIT_MAXPOWER(self)
+
+            self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+            self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("RUNIC_POWER")
+
+            self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.RunicPower, 30, 10, nil, nil))
+        end,
+    }, "DEATHKNIGHT")
+
 end
