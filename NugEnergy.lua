@@ -74,17 +74,17 @@ local defaults = {
     global = {
         classConfig = {
             ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
-            DRUID = { "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic" },
+            DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
             PALADIN = { "Disabled", "Disabled", "Disabled" },
-            MONK = { "Disabled", "Disabled", "Disabled" },
+            MONK = { "EnergyBrewmaster", "Disabled", "EnergyWindwalker" },
             WARLOCK = { "Disabled", "Disabled", "Disabled" },
-            DEMONHUNTER = { "Disabled", "SoulFragments" },
-            DEATHKNIGHT = { "Disabled", "Disabled", "Disabled" },
-            MAGE = { "Disabled", "Disabled", "Disabled" },
+            DEMONHUNTER = { "FuryDemonHunter", "FuryDemonHunter" },
+            DEATHKNIGHT = { "RunicPowerDeathstrike", "RunicPower", "RunicPower" },
+            MAGE = { "MageMana", "Disabled", "Disabled" },
             WARRIOR = { "Disabled", "Disabled", "Disabled" },
-            SHAMAN = { "Disabled", "Disabled", "Disabled" },
-            HUNTER = { "Disabled", "Disabled", "Disabled" },
-            PRIEST = { "Disabled", "Disabled", "Disabled" },
+            SHAMAN = { "Maelstrom", "Disabled", "Disabled" },
+            HUNTER = { "Focus", "Focus", "Focus" },
+            PRIEST = { "Disabled", "Disabled", "Insanity" },
         },
     },
     profile = {
@@ -152,6 +152,30 @@ local defaults = {
         soundChannel = "SFX",
     }
 }
+
+if APILevel <= 3 then
+    defaults.global.classConfig = {
+        ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
+        DRUID = { "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic" },
+        PALADIN = { "Disabled", "Disabled", "Disabled" },
+        MONK = { "Disabled", "Disabled", "Disabled" },
+        WARLOCK = { "Disabled", "Disabled", "Disabled" },
+        DEMONHUNTER = { "Disabled", "Disabled" },
+        DEATHKNIGHT = { "Disabled", "Disabled", "Disabled" },
+        MAGE = { "ArcaneBlastClassic", "ArcaneBlastClassic", "ArcaneBlastClassic" },
+        WARRIOR = { "RageWarriorClassic", "RageWarriorClassic", "RageWarriorClassic" },
+        SHAMAN = { "Disabled", "Disabled", "Disabled" },
+        HUNTER = { "Disabled", "Disabled", "Disabled" },
+        PRIEST = { "Disabled", "Disabled", "Disabled" },
+    }
+    if APILevel == 1 then
+        defaults.global.classConfig.MAGE = { "Disabled", "Disabled", "Disabled" }
+    end
+    if APILevel <= 2 then
+        defaults.global.classConfig.SHAMAN = { "Disabled", "Disabled", "Disabled" }
+    end
+end
+
 local normalColor = defaults.profile.normalColor
 local lowColor = defaults.profile.lowColor
 local maxColor = defaults.profile.maxColor
@@ -831,6 +855,8 @@ function NugEnergy.UPDATE_STEALTH(self, event, fromUpdateEnergy)
 end
 
 function NugEnergy:UpdateVisibility()
+    if self.isDisabled then self:Hide(); return end
+
     local inCombat = UnitAffectingCombat("player")
     upvalueInCombat = inCombat
     if (inCombat or
@@ -1710,6 +1736,22 @@ function NugEnergy:RealignMarks(t)
 end
 
 
+function NugEnergy:NotifyGUI()
+    if LibStub then
+        local cfgreg = LibStub("AceConfigRegistry-3.0", true)
+        if cfgreg then cfgreg:NotifyChange("NugEnergyOptions") end
+    end
+end
+
+function ns.GetProfileList(db)
+    local profiles = db:GetProfiles()
+    local t = {}
+    for i,v in ipairs(profiles) do
+        t[v] = v
+    end
+    return t
+end
+local GetProfileList = ns.GetProfileList
 
 function NugEnergy:CreateGUI()
     local opt = {
@@ -1717,6 +1759,14 @@ function NugEnergy:CreateGUI()
         name = "NugEnergy Settings",
         order = 1,
         args = {
+            configSelection = {
+                type = "group",
+                name = " ",
+                guiInline = true,
+                order = 0.5,
+                args = {
+                }
+            },
             unlock = {
                 name = L"Unlock",
                 type = "execute",
@@ -2193,87 +2243,60 @@ function NugEnergy:CreateGUI()
                             },
                         },
                     },
-                    classResourceGroup = {
-                        type = "group",
-                        name = "",
-                        order = 4,
-                        args = {
-                            energy = {
-                                name = L"Energy",
-                                type = "toggle",
-                                order = 1,
-                                get = function(info) return NugEnergy.db.profile.energy end,
-                                set = function(info, v) NugEnergy.Commands.energy() end
-                            },
-                            rage = {
-                                name = L"Rage",
-                                type = "toggle",
-                                order = 2,
-                                get = function(info) return NugEnergy.db.profile.rage end,
-                                set = function(info, v) NugEnergy.Commands.rage() end
-                            },
-                            focus = {
-                                name = L"Focus",
-                                type = "toggle",
-                                order = 3,
-                                get = function(info) return NugEnergy.db.profile.focus end,
-                                set = function(info, v) NugEnergy.Commands.focus() end
-                            },
-                            fury = {
-                                name = L"Fury & Vengeance",
-                                type = "toggle",
-                                order = 4,
-                                get = function(info) return NugEnergy.db.profile.fury end,
-                                set = function(info, v) NugEnergy.Commands.fury() end
-                            },
-                            runic = {
-                                name = L"Runic Power",
-                                type = "toggle",
-                                order = 5,
-                                get = function(info) return NugEnergy.db.profile.runic end,
-                                set = function(info, v) NugEnergy.Commands.runic() end
-                            },
-                            shards = {
-                                name = L"Shards",
-                                type = "toggle",
-                                order = 6,
-                                get = function(info) return NugEnergy.db.profile.shards end,
-                                set = function(info, v) NugEnergy.Commands.shards() end
-                            },
-                            insanity = {
-                                name = L"Insanity",
-                                type = "toggle",
-                                order = 7,
-                                get = function(info) return NugEnergy.db.profile.insanity end,
-                                set = function(info, v) NugEnergy.Commands.insanity() end
-                            },
-                            balance = {
-                                name = L"Balance",
-                                type = "toggle",
-                                order = 8,
-                                get = function(info) return NugEnergy.db.profile.balance end,
-                                set = function(info, v) NugEnergy.Commands.balance() end
-                            },
-                            maelstrom = {
-                                name = L"Maelstrom",
-                                type = "toggle",
-                                order = 9,
-                                get = function(info) return NugEnergy.db.profile.maelstrom end,
-                                set = function(info, v) NugEnergy.Commands.maelstrom() end
-                            },
-                            mana = {
-                                name = L"Mana",
-                                type = "toggle",
-                                order = 10,
-                                get = function(info) return NugEnergy.db.profile.mana end,
-                                set = function(info, v) NugEnergy.Commands.mana() end
-                            },
-                        },
-                    },
                 },
             }, --
         },
     }
+
+    local specsTable = opt.args.configSelection.args
+    for specIndex=1,GetNumSpecializations() do
+        local id, name, description, icon = GetSpecializationInfo(specIndex)
+        local iconCoords = nil
+        if APILevel <= 2 then
+            icon = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
+            local _, class = UnitClass('player')
+            iconCoords = CLASS_ICON_TCOORDS[class];
+        end
+        local _, class = UnitClass('player')
+        specsTable["desc"..specIndex] = {
+            name = "",
+            type = "description",
+            width = 0.25,
+            imageWidth = 23,
+            imageHeight = 23,
+            image = icon,
+            imageCoords = iconCoords,
+            order = specIndex*10+1,
+        }
+        specsTable["conf"..specIndex] = {
+            name = "",
+            -- width = 1.5,
+            width = 3.0,
+            type = "select",
+            values = NugEnergy:GetAvailableConfigsForSpec(specIndex),
+            get = function(info) return NugEnergy.db.global.classConfig[class][specIndex] end,
+            set = function(info, v)
+                NugEnergy.db.global.classConfig[class][specIndex] = v
+                NugEnergy:SPELLS_CHANGED()
+                NugEnergy:NotifyGUI()
+            end,
+            order = specIndex*10+2,
+        }
+        -- specsTable["profile"..specIndex] = {
+        --     name = "",
+        --     type = 'select',
+        --     order = specIndex*10+3,
+        --     width = 1.5,
+        --     values = function()
+        --         return GetProfileList(NugEnergy.db)
+        --     end,
+        --     get = function(info) return NugEnergy.db.global.specProfiles[class][specIndex] end,
+        --     set = function(info, v)
+        --         NugEnergy.db.global.specProfiles[class][specIndex] = v
+        --         NugEnergy:SPELLS_CHANGED()
+        --     end,
+        -- }
+    end
 
     local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
     AceConfigRegistry:RegisterOptionsTable("NugEnergyOptions", opt)
@@ -2340,11 +2363,12 @@ end
 function NugEnergy:Disable()
     -- GetComboPoints = dummy -- disable
     self.isDisabled = true
-    -- self:Hide()
+    self:Hide()
 end
 
 function NugEnergy:Enable()
     self.isDisabled = false
+    self:UpdateVisibility()
 end
 function NugEnergy:IsDisabled()
     return self.isDisabled
