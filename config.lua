@@ -638,9 +638,9 @@ if APILevel <= 3 then
                 elseif newPowerType == "RAGE" then
                     self:ApplyConfig("RageDruidClassic")
                     self:Update()
-                elseif newPowerType == "MANA" then
-                    self:ApplyConfig("GeneralFSRMana")
-                    self:Update()
+                -- elseif newPowerType == "MANA" then
+                --     self:ApplyConfig("GeneralFSRMana")
+                --     self:Update()
                 else
                     self:Disable()
                 end
