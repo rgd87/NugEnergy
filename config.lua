@@ -630,12 +630,14 @@ if APILevel <= 3 then
                 self:ResetConfig()
 
                 if newPowerType == "ENERGY" then
+                    self:Enable()
                     self:ApplyConfig("EnergyRogue")
                     if APILevel == 2 and self.ticker then
                         self.ticker:Reset()
                     end
                     self:Update()
                 elseif newPowerType == "RAGE" then
+                    self:Enable()
                     self:ApplyConfig("RageDruidClassic")
                     self:Update()
                 -- elseif newPowerType == "MANA" then
