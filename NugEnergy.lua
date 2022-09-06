@@ -2538,7 +2538,7 @@ function NugEnergy:GetAvailableConfigsForSpec(specIndex)
     local _, class = UnitClass("player")
     local avConfigs = {}
     for name, config in pairs(configs) do
-        if config.class == class and (config.specIndex == specIndex or config.specIndex == nil) then
+        if (config.class == class or config.class == "GENERAL") and (config.specIndex == specIndex or config.specIndex == nil) then
             avConfigs[name] = name
         end
     end

@@ -136,26 +136,6 @@ NugEnergy:RegisterConfig("EnergyRogue", {
     end,
 }, "ROGUE")
 
-NugEnergy:RegisterConfig("GeneralRage", {
-    triggers = { GetSpecialization },
-    setup = function(self, spec)
-        self:SetPowerFilter("RAGE", Enum.PowerType.Rage)
-        self:SetNormalColor()
-        self.flags.shouldBeFull = true
-
-        self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-        self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
-        GENERAL_UNIT_MAXPOWER(self)
-
-        self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-        self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("RAGE")
-
-        -- self.eventProxy:RegisterUnitEvent("UNIT_HEALTH", "target")
-        -- self.eventProxy.UNIT_HEALTH = UNIT_HEALTH_EXECUTE(0.2)
-
-        -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
-    end,
-}, "GENERAL")
 
 
 --------------------------
@@ -205,7 +185,7 @@ if isMainline then
 
             -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
         end,
-    }, "GENERAL")
+    }, "TEMPLATE")
 
     NugEnergy:RegisterConfig("RageWarriorExecute", {
         triggers = { GetSpecialization },
@@ -492,100 +472,143 @@ if APILevel <= 3 then
 
             -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
         end,
-    }, "GENERAL")
+    }, "TEMPLATE")
 
 
-    local GetPower_ClassicMana = function(unit)
-        local p = GetTime() - NugEnergy.ticker:GetLastTickTime()
-        local _, PowerTypeIndex = NugEnergy:GetPowerFilter()
-        local mana = UnitPower(unit, PowerTypeIndex)
-        local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local p2
-        if pmax > 0  then
-            p2 = string.format("%d", mana/pmax*100)
+    if APILevel <= 2 then
+        local GetPower_ClassicMana = function(unit)
+            local p = GetTime() - NugEnergy.ticker:GetLastTickTime()
+            local _, PowerTypeIndex = NugEnergy:GetPowerFilter()
+            local mana = UnitPower(unit, PowerTypeIndex)
+            local pmax = UnitPowerMax(unit, PowerTypeIndex)
+            local p2
+            if pmax > 0  then
+                p2 = string.format("%d", mana/pmax*100)
+            end
+            local shine = nil
+            local capped = mana == pmax
+            local insufficient = nil
+            return p, p2, execute, shine, capped, insufficient
         end
-        local shine = nil
-        local capped = mana == pmax
-        local insufficient = nil
-        return p, p2, execute, shine, capped, insufficient
-    end
 
 
-    NugEnergy:RegisterConfig("GeneralMana", {
-        triggers = { GetSpecialization },
-        setup = function(self, spec)
-            self:SetPowerFilter("MANA", Enum.PowerType.Mana)
-            self:SetNormalColor()
-            self.flags.shouldBeFull = true
+        NugEnergy:RegisterConfig("GeneralMana", {
+            triggers = { GetSpecialization },
+            setup = function(self, spec)
+                self:SetPowerFilter("MANA", Enum.PowerType.Mana)
+                self:SetNormalColor()
+                self.flags.shouldBeFull = true
 
-            -- self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-            -- self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
-            -- GENERAL_UNIT_MAXPOWER(self)
-            self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
-            self:SetMinMaxValues(0, 2)
+                -- self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                -- self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+                -- GENERAL_UNIT_MAXPOWER(self)
+                self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
+                self:SetMinMaxValues(0, 2)
 
-            self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-            self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("MANA")
+                self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+                self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("MANA")
 
-            self.ticker:Enable()
-            self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
+                self.ticker:Enable()
+                self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
 
-            self:SetPowerGetter(GetPower_ClassicMana)
-        end,
-    }, "GENERAL")
-
-
-    local GetPower_ClassicMana5SR = function(unit)
-        local p = GetTime() - NugEnergy.fsrwatch:GetLastManaSpentTime()
-        local _, PowerTypeIndex = NugEnergy:GetPowerFilter()
-        local mana = UnitPower(unit, PowerTypeIndex)
-        local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local p2
-        if pmax > 0  then
-            p2 = string.format("%d", mana/pmax*100)
-        end
-        local shine = nil
-        local capped = nil
-        local insufficient = nil
-        -- if p >= 5 and callback then
-        --     callback()
-        -- end
-        -- local p2 = throttleText and math_modf(p2/5)*5 or p2
-        return p, p2, execute, shine, capped, true
-    end
+                self:SetPowerGetter(GetPower_ClassicMana)
+                -- self:SetPowerGetter(MakeManaGetPower(Enum.PowerType.Mana, 15))
+            end,
+        }, "GENERAL")
 
 
-
-    NugEnergy:RegisterConfig("GeneralFSRMana", {
-        triggers = { GetSpecialization },
-        setup = function(self, spec)
-            -- local powerFilter = self:GetPowerFilter()
-            -- if powerFilter ~= "MANA" then
-                self:ApplyConfig("GeneralMana")
+        local GetPower_ClassicMana5SR = function(unit)
+            local p = GetTime() - NugEnergy.fsrwatch:GetLastManaSpentTime()
+            local _, PowerTypeIndex = NugEnergy:GetPowerFilter()
+            local mana = UnitPower(unit, PowerTypeIndex)
+            local pmax = UnitPowerMax(unit, PowerTypeIndex)
+            local p2
+            if pmax > 0  then
+                p2 = string.format("%d", mana/pmax*100)
+            end
+            local shine = nil
+            local capped = nil
+            local insufficient = nil
+            -- if p >= 5 and callback then
+            --     callback()
             -- end
+            -- local p2 = throttleText and math_modf(p2/5)*5 or p2
+            return p, p2, execute, shine, capped, true
+        end
 
-            self.fsrwatch = self.fsrwatch or self:Make5SRWatcher(function(self)
-                local powerFilter = self:GetPowerFilter()
-                if powerFilter == "MANA" then
-                    self:ApplyConfig("GeneralFSRMana")
-                end
-            end)
-            self.fsrwatch:Enable()
 
-            self.ticker:Enable("FSR", function(self)
-                self:ResetConfig()
-                self:ApplyConfig("GeneralMana")
+
+        NugEnergy:RegisterConfig("GeneralFSRMana", {
+            triggers = { GetSpecialization },
+            setup = function(self, spec)
+                -- local powerFilter = self:GetPowerFilter()
+                -- if powerFilter ~= "MANA" then
+                    self:ApplyConfig("GeneralMana")
+                -- end
+
+                self.fsrwatch = self.fsrwatch or self:Make5SRWatcher(function(self)
+                    local powerFilter = self:GetPowerFilter()
+                    if powerFilter == "MANA" then
+                        self:ApplyConfig("GeneralFSRMana")
+                    end
+                end)
                 self.fsrwatch:Enable()
-                self:Update()
-            end)
 
-            self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
-            self:SetMinMaxValues(0, 5)
+                self.ticker:Enable("FSR", function(self)
+                    self:ResetConfig()
+                    self:ApplyConfig("GeneralMana")
+                    self.fsrwatch:Enable()
+                    self:Update()
+                end)
 
-            self:SetPowerGetter(GetPower_ClassicMana5SR)
-            self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
-        end,
-    }, "GENERAL")
+                self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
+                self:SetMinMaxValues(0, 5)
+
+                self:SetPowerGetter(GetPower_ClassicMana5SR)
+                self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
+            end,
+        }, "GENERAL")
+    end
+
+
+    if APILevel >= 3 then
+        local GetPower_ClassicMana = function(unit)
+            local p = GetTime() - NugEnergy.ticker:GetLastTickTime()
+            local _, PowerTypeIndex = NugEnergy:GetPowerFilter()
+            local mana = UnitPower(unit, PowerTypeIndex)
+            local pmax = UnitPowerMax(unit, PowerTypeIndex)
+            local p2
+            if pmax > 0  then
+                p2 = string.format("%d", mana/pmax*100)
+            end
+            local shine = nil
+            local capped = mana == pmax
+            local insufficient = nil
+            return p, p2, execute, shine, capped, insufficient
+        end
+
+
+        NugEnergy:RegisterConfig("GeneralMana", {
+            triggers = { GetSpecialization },
+            setup = function(self, spec)
+                self:SetPowerFilter("MANA", Enum.PowerType.Mana)
+                self:SetNormalColor()
+                self.flags.shouldBeFull = true
+
+                self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+                self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+                GENERAL_UNIT_MAXPOWER(self)
+
+                self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+                self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("MANA")
+
+                -- self:SetPowerGetter(GetPower_ClassicMana)
+                self:SetPowerGetter(MakeManaGetPower(Enum.PowerType.Mana, 15))
+            end,
+        }, "GENERAL")
+    end
+
+
 
     NugEnergy:RegisterConfig("RageWarriorClassic", {
         triggers = { GetSpecialization },
