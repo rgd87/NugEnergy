@@ -51,6 +51,7 @@ NugEnergy:RegisterEvent("PLAYER_LOGIN")
 local UnitPower = UnitPower
 local math_modf = math.modf
 local math_abs = math.abs
+local math_max = math.max
 local PowerFilter
 local PowerTypeIndex
 local ForcedToShow
@@ -820,6 +821,7 @@ local HideTimer = function(self, time)
     local pA = NugEnergy.db.profile.outOfCombatAlpha
     local rA = 1 - NugEnergy.db.profile.outOfCombatAlpha
     local a = pA + (p*rA)
+    if a < 0 then a = 0 end
     nen:SetAlpha(a)
     if self.OnUpdateCounter >= fadeAfter + fadeTime then
         if nen:GetAlpha() <= 0.03 then
@@ -1190,7 +1192,7 @@ function NugEnergy.Create(self)
 
     f.spark = spark
 
-    local spentBar = f:CreateTexture(nil, "ARTWORK", 7)
+    local spentBar = f:CreateTexture(nil, "ARTWORK", nil, 7)
     -- spentBar:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
     spentBar:SetTexture(tex)
     -- spentBar:SetVertexColor(unpack(color))
