@@ -84,10 +84,11 @@ local defaults = {
             DEMONHUNTER = { "FuryDemonHunter", "FuryDemonHunter" },
             DEATHKNIGHT = { "RunicPowerDeathstrike", "RunicPower", "RunicPower" },
             MAGE = { "MageMana", "Disabled", "Disabled" },
-            WARRIOR = { "Disabled", "Disabled", "Disabled" },
+            WARRIOR = { "RageWarriorExecute", "RageWarriorExecute", "RageWarriorExecute" },
             SHAMAN = { "Maelstrom", "Disabled", "Disabled" },
             HUNTER = { "Focus", "Focus", "Focus" },
             PRIEST = { "Disabled", "Disabled", "Insanity" },
+            EVOKER = { "Disabled", "Disabled", "Disabled" },
         },
     },
     profile = {
