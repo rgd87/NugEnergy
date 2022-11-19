@@ -1,2 +1,2 @@
 *.orig
-Libs/
+libs/*/

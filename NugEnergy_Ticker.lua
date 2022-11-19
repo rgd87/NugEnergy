@@ -1,55 +1,46 @@
 local lastEnergyTickTime = GetTime()
 local lastEnergyValue = 0
 local heartbeatPlayed = false
---[==[
-local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, throttleText)
-    return function(unit)
-        local p = GetTime() - lastEnergyTickTime
-        local p2 = UnitPower(unit, PowerTypeIndex)
-        local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local shine = shineZone and (p2 >= pmax-shineZone)
-        local capped = p2 >= pmax-cappedZone
-        -- local p2 = throttleText and math_modf(p2/5)*5 or p2
-        return p, p2, execute, shine, capped, (minLimit and p2 < minLimit)
-    end
-end
-]==]
-local EPT = Enum.PowerType
-local Enum_PowerType_Energy = EPT.Energy
+local ENERGY = Enum.PowerType.Energy
 
 local tickFiltering = true
-local ClassicTickerFrame = CreateFrame("Frame")
-NugEnergy.ticker = ClassicTickerFrame
-local ClassicTickerOnUpdate = function(self)
-    local _, PowerTypeIndex = NugEnergy:GetPowerFilter()
-    local currentEnergy = UnitPower("player", PowerTypeIndex)
+local ticker = CreateFrame("Frame")
+NugEnergy.ticker = ticker
+
+local onUpdate = function(self)
+    local _, powerTypeIndex = NugEnergy:GetPowerFilter()
+    local currentEnergy = UnitPower("player", powerTypeIndex)
     local now = GetTime()
     local possibleTick = false
     if currentEnergy > lastEnergyValue then
-        if PowerTypeIndex == Enum_PowerType_Energy and tickFiltering then
+        if powerTypeIndex == ENERGY and tickFiltering then
             local diff = currentEnergy - lastEnergyValue
-            if  (diff > 18 and diff < 22) or -- normal tick
-                (diff > 38 and diff < 42) or -- adr rush
-                (diff < 42 and currentEnergy == UnitPowerMax("player", PowerTypeIndex)) -- including tick to cap, but excluding thistle tea
-            then
+            if
+                (diff > 18 and diff < 22) or
+                    (diff > 38 and diff < 42) or
+                    (diff < 42 and currentEnergy == UnitPowerMax("player", powerTypeIndex))
+             then
                 possibleTick = true
             end
         else
             possibleTick = true
         end
     end
+
     if now >= lastEnergyTickTime + 2 then
         possibleTick = true
     end
+
     if possibleTick then
         lastEnergyTickTime = now
         heartbeatPlayed = false
     end
+
     lastEnergyValue = currentEnergy
 end
 
 local fsrCallback
-local ClassicTickerOnUpdateFSR = function(self)
+local onUpdate_FSR = function(self)
     local now = GetTime()
     if now >= lastEnergyTickTime + 5 then
         self:Disable()
@@ -57,39 +48,43 @@ local ClassicTickerOnUpdateFSR = function(self)
     end
 end
 
-function ClassicTickerFrame:GetLastTickTime()
+function ticker:GetLastTickTime()
     return lastEnergyTickTime
 end
-function ClassicTickerFrame:Reset()
+
+function ticker:Reset()
     lastEnergyTickTime = GetTime()
 end
-function ClassicTickerFrame:Enable(mode, callback)
+
+function ticker:Enable(mode, callback)
     if mode == "FSR" then
-        self:SetScript("OnUpdate", ClassicTickerOnUpdateFSR)
+        self:SetScript("OnUpdate", onUpdate_FSR)
         fsrCallback = callback
         self:Reset()
     else
-        self:SetScript("OnUpdate", ClassicTickerOnUpdate)
+        self:SetScript("OnUpdate", onUpdate)
     end
     self.isEnabled = true
 end
-function ClassicTickerFrame:Disable()
+
+function ticker:Disable()
     self:SetScript("OnUpdate", nil)
     self.isEnabled = false
 end
 
-function ClassicTickerFrame:GetTickProgress()
+function ticker:GetTickProgress()
     return GetTime() - lastEnergyTickTime
 end
-function ClassicTickerFrame:SetHeartbeatPlayed(status)
+
+function ticker:SetHeartbeatPlayed(status)
     heartbeatPlayed = status
 end
-function ClassicTickerFrame:HasHeartbeatPlayed()
+
+function ticker:HasHeartbeatPlayed()
     return heartbeatPlayed
 end
 
 do
-
     local twEnabled
     local twEnabledCappedOnly
     local twStart
@@ -98,7 +93,7 @@ do
     local twChangeColor
     local twPlaySound
 
-    function ClassicTickerFrame:UpdateUpvalues()
+    function ticker:UpdateUpvalues()
         twEnabled = NugEnergy.db.profile.twEnabled
         twEnabledCappedOnly = NugEnergy.db.profile.twEnabledCappedOnly
         twStart = NugEnergy.db.profile.twStart
@@ -115,25 +110,31 @@ do
     local heartbeatEligible
     local heartbeatEligibleLastTime = 0
     local heartbeatEligibleTimeout = 8
+
     local function GetGradientColor(c1, c2, v)
-        if v > 1 then v = 1 end
-        local r = c1[1] + v*(c2[1]-c1[1])
-        local g = c1[2] + v*(c2[2]-c1[2])
-        local b = c1[3] + v*(c2[3]-c1[3])
-        return r,g,b
+        v = math.min(v, 1)
+        local r = c1[1] + v * (c2[1] - c1[1])
+        local g = c1[2] + v * (c2[2] - c1[2])
+        local b = c1[3] + v * (c2[3] - c1[3])
+        return r, g, b
     end
+
     local function ClassicTickerColorUpdate(self, tp, prevColor)
         local twSecondThreshold = twStart + twLength
 
         if tp > twSecondThreshold then
-            local fp = twCrossfade > 0 and  ((twSecondThreshold + twCrossfade - tp) / twCrossfade) or 0
-            if fp < 0 then fp = 0 end
+            local fp = twCrossfade > 0 and ((twSecondThreshold + twCrossfade - tp) / twCrossfade) or 0
+            if fp < 0 then
+                fp = 0
+            end
             local cN = prevColor
             local cA = NugEnergy.db.profile.twColor
             self:SetColor(GetGradientColor(cN, cA, fp))
         elseif tp > twStart then
-            local fp = twCrossfade > 0 and  ((twStart + twCrossfade - tp) / twCrossfade) or 0
-            if fp < 0 then fp = 0 end
+            local fp = twCrossfade > 0 and ((twStart + twCrossfade - tp) / twCrossfade) or 0
+            if fp < 0 then
+                fp = 0
+            end
             local cN = prevColor
             local cA = NugEnergy.db.profile.twColor
             self:SetColor(GetGradientColor(cA, cN, fp))
@@ -150,7 +151,8 @@ do
                 if twPlaySound then
                     local now = GetTime()
                     local isEnemy = (UnitReaction("target", "player") or 4) <= 4
-                    heartbeatEligible = IsStealthed() and UnitExists("target") and isEnemy and GetUnitSpeed("player") > 0
+                    heartbeatEligible =
+                        IsStealthed() and UnitExists("target") and isEnemy and GetUnitSpeed("player") > 0
                     if heartbeatEligible then
                         heartbeatEligibleLastTime = now
                     end
@@ -171,7 +173,7 @@ do
     function NugEnergy:PlaySound()
         local sound
         if NugEnergy.db.profile.soundName == "Heartbeat" then
-            sound = "Interface\\AddOns\\NugEnergy\\heartbeat.mp3"
+            sound = [[Interface\AddOns\NugEnergy\media\sounds\heartbeat.mp3]]
         elseif NugEnergy.db.profile.soundName then
             sound = NugEnergy.db.profile.soundNameCustom
         end
@@ -179,17 +181,20 @@ do
     end
 end
 
-function NugEnergy:Make5SRWatcher(default_callback)
-    local f = CreateFrame("Frame", nil, UIParent)
-    f:SetScript("OnEvent", function(self, event, ...)
-        return self[event](self, event, ...)
-    end)
+function NugEnergy:Make5SRWatcher(defaultCallback)
+    local watcherFrame = CreateFrame("Frame", nil, UIParent)
+    watcherFrame:SetScript(
+        "OnEvent",
+        function(self, event, ...)
+            return self[event](self, event, ...)
+        end
+    )
 
-    local callback = default_callback
-
+    local callback = defaultCallback
     local lastManaDropTime = 0
-    local prevMana = UnitPower("player", 0)
-    f.UNIT_SPELLCAST_SUCCEEDED = function(self, event, unit)
+    local previousMana = UnitPower("player", 0)
+
+    function watcherFrame:UNIT_SPELLCAST_SUCCEEDED(event, unit)
         if unit == "player" then
             local now = GetTime()
             if now - lastManaDropTime < 0.01 then
@@ -197,33 +202,35 @@ function NugEnergy:Make5SRWatcher(default_callback)
             end
         end
     end
-    f.UNIT_POWER_UPDATE = function(self, event, unit, ptype)
-        if ptype == "MANA" then
+
+    function watcherFrame:UNIT_POWER_UPDATE(event, unit, powerType)
+        if powerType == "MANA" then
             local mana = UnitPower("player", 0)
-            if mana < prevMana then
+            if mana < previousMana then
                 lastManaDropTime = GetTime()
             end
-            prevMana = mana
+            previousMana = mana
         end
     end
 
-    f.Enable = function(self, new_callback)
+    function watcherFrame:Enable(newCallback)
         self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
         self:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-        if new_callback then
-            callback = new_callback
+        if newCallback then
+            callback = newCallback
         end
     end
-    f.Disable = function(self)
+
+    function watcherFrame:Disable()
         self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
         self:UnregisterEvent("UNIT_POWER_UPDATE")
     end
 
-    f.GetLastManaSpentTime = function(self)
+    function watcherFrame:GetLastManaSpentTime()
         return lastManaDropTime
     end
 
-    f:Enable()
+    watcherFrame:Enable()
 
-    return f
+    return watcherFrame
 end
