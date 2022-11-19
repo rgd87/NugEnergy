@@ -1,8 +1,0 @@
-{
-    "Lua.diagnostics.disable": [
-        "deprecated"
-    ],
-    "Lua.diagnostics.globals": [
-        "InterfaceOptionsFrame_OpenToCategory"
-    ]
-}

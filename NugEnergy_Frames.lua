@@ -9,7 +9,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local BTM = BackdropTemplateMixin
 
 -- API functions
-local unpack = unpack 
+local unpack = unpack
 local math_abs = math.abs
 local math_min = math.min
 local math_max = math.max
