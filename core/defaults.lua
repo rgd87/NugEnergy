@@ -85,6 +85,10 @@ defaults.behaviors = {
     alert = {
         isEnabled           = false
     },
+    textThrottler = {
+        isEnabled           = false,
+        throttleFactor      = 5,
+    },
     execute = {
         isEnabled           = false,
         healthPercent       = 0.2,

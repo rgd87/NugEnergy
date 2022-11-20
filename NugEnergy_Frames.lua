@@ -329,6 +329,18 @@ local _createText = function(nen, config)
         end
     end
 
+    do
+        local transform = nil
+        function text:SetTransform(newTransform)
+            transform = newTransform
+        end
+
+        local originalSetText = text.SetText
+        function text:SetText(value)
+            originalSetText(self, transform and transform(value) or value)
+        end
+    end
+
     function text:UpdateFont()
         local font = LSM:Fetch("font", self.config.fontName)
         self:SetFont(font, self.config.fontSize, self.config.fontFlags)
@@ -348,7 +360,7 @@ local _createText = function(nen, config)
         fontFrame:Update()
         self:UpdateFont()
         self:UpdatePosition()
-        self:SetText(tostring(statusBar:GetValue()))
+        self:SetText(statusBar:GetValue())
     end
 
     -- init
@@ -359,14 +371,7 @@ local _createText = function(nen, config)
         statusBar,
         "SetValue",
         function(_, value)
-            -- TODO: Add this back in
-            if (text.config.textThrottleAmount) then
-                local throttleBy = text.config.textThrottleAmount
-                local v = math_modf(value / throttleBy) * throttleBy
-                text:SetText(tostring(v))
-            else
-                text:SetText(tostring(value))
-            end
+            text:SetText(value)
         end
     )
 
@@ -889,6 +894,35 @@ local _createPLC = function(nen, config)
     return plc
 end
 
+local _createTextThrottler = function(nen, config)
+    local statusBar = nen.statusBar
+    local text = nen.text
+
+    local textThrottler = {
+        isEnabled = config.isEnabled,
+        throttleFactor = config.throttleFactor
+    }
+
+    function textThrottler:CreateTransform()
+        local tf = self.throttleFactor
+        return function(value)
+            return math_modf(value / tf) * tf
+        end
+    end
+
+    function textThrottler:Update()
+        self.isEnabled = config.isEnabled
+        self.throttleFactor = self.isEnabled and config.throttleFactor or 1
+        text:SetTransform(self:CreateTransform())
+        text:SetText(statusBar:GetValue())
+    end
+
+    -- init
+    textThrottler:Update()
+
+    return textThrottler
+end
+
 function NugEnergy:CreateComponents()
     local profile = self.db.profile
 
@@ -905,4 +939,5 @@ function NugEnergy:CreateComponents()
     self.fader = self.fader or _createFader(self, profile.behaviors.fader)
     self.spentBar = self.spentBar or _createSpentBar(self, profile.behaviors.spenderFeedback)
     self.alert = self.alert or _createAlert(self, profile.behaviors.alert)
+    self.textThrottler = self.textThrottler or _createTextThrottler(self, profile.behaviors.textThrottler)
 end

@@ -648,9 +648,36 @@ local SETTINGS_CONFIG = {
                         }
                     }
                 },
-                execute = {
+                textThrottler = {
                     type = "group",
                     order = 4,
+                    name = L.TEXT_THROTTLER,
+                    inline = true,
+                    set = _set(
+                        nil,
+                        function()
+                            NugEnergy.textThrottler:Update()
+                        end
+                    ),
+                    args = {
+                        isEnabled = {
+                            type = "toggle",
+                            order = 1,
+                            name = L.ENABLED
+                        },
+                        throttleFactor = {
+                            type = "range",
+                            order = 2,
+                            name = L.THROTTLE_FACTOR,
+                            min = 1,
+                            max = 100,
+                            step = 1,
+                        }
+                    }
+                },
+                execute = {
+                    type = "group",
+                    order = 5,
                     name = L.EXECUTE,
                     inline = true,
                     args = {
@@ -672,7 +699,7 @@ local SETTINGS_CONFIG = {
                 },
                 alert = {
                     type = "group",
-                    order = 5,
+                    order = 6,
                     name = L.ALERT,
                     inline = true,
                     set = _set(
