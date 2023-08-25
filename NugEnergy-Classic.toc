@@ -1,0 +1,26 @@
+## Interface: 11404
+## Title: NugEnergy
+## Notes: Energy monitor
+## Author: d87
+## SavedVariables: NugEnergyDB
+## SavedVariablesPerCharacter: NugEnergyDB_Character
+## Version: @project-version@
+
+## X-WoWI-ID: 9099
+## X-Curse-Project-ID: 43975
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+Libs\LibSharedMedia-3.0\lib.xml
+Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+
+NugEnergy.lua
+ticker.lua
+config.lua
+
+Locales\ruRU.lua
+Locales\zhTW.lua
+Locales\zhCN.lua
