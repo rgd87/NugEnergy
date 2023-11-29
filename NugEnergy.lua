@@ -208,7 +208,7 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     SLASH_NUGENERGY2= "/nen"
     SlashCmdList["NUGENERGY"] = self.SlashCmd
 
-    local f = CreateFrame('Frame', nil, InterfaceOptionsFrame)
+    local f = CreateFrame('Frame', nil, SettingsPanel or InterfaceOptionsFrame)
         f:SetScript('OnShow', function(self)
             self:SetScript('OnShow', nil)
 

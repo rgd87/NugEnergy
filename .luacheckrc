@@ -109,6 +109,7 @@ globals = {
     "UnitAura",
     "CopyTable",
     "InterfaceOptionsFrame",
+    "SettingsPanel",
     "GetTime",
     "UnitPowerMax",
     "IsPlayerSpell",
