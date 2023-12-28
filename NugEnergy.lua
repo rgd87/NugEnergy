@@ -120,6 +120,7 @@ local defaults = {
         height = 30,
         normalColor = { 0.9, 0.1, 0.1 }, --1
         altColor = { 0.9, 0.168, 0.43 }, -- for dispatch and meta 2
+        useMaxColor = true,
         maxColor = { 131/255, 0.2, 0.2 }, --max color 3
         lowColor = { 141/255, 31/255, 62/255 }, --low color 4
         enableColorByPowerType = false,
@@ -985,6 +986,9 @@ function NugEnergy:SetNormalColor()
         normalColor = NugEnergy.db.profile.normalColor
         lowColor = NugEnergy.db.profile.lowColor
         maxColor = NugEnergy.db.profile.maxColor
+    end
+    if not NugEnergy.db.profile.useMaxColor then
+        maxColor = normalColor
     end
 end
 
@@ -1875,10 +1879,22 @@ function NugEnergy:CreateGUI()
                     ColorByPowerType = {
                         name = L"Color by Power Type",
                         type = "toggle",
+                        width = "full",
                         order = 1.1,
                         get = function(info) return NugEnergy.db.profile.enableColorByPowerType end,
                         set = function(info, v)
                             NugEnergy.db.profile.enableColorByPowerType = not NugEnergy.db.profile.enableColorByPowerType
+                            NugEnergy:SetNormalColor()
+                        end
+                    },
+                    useMaxColor = {
+                        name = L"Recolor when Capped",
+                        type = "toggle",
+                        width = "full",
+                        order = 1.11,
+                        get = function(info) return NugEnergy.db.profile.useMaxColor end,
+                        set = function(info, v)
+                            NugEnergy.db.profile.useMaxColor = not NugEnergy.db.profile.useMaxColor
                             NugEnergy:SetNormalColor()
                         end
                     },
@@ -2270,7 +2286,7 @@ function NugEnergy:CreateGUI()
         specsTable["conf"..specIndex] = {
             name = "",
             -- width = 1.5,
-            width = 3.0,
+            width = 3.2,
             type = "select",
             values = NugEnergy:GetAvailableConfigsForSpec(specIndex),
             get = function(info) return NugEnergy.db.global.classConfig[class][specIndex] end,
