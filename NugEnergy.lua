@@ -1,6 +1,5 @@
 local addonName, ns = ...
 
-local textoutline = false
 local spenderFeedback = true
 local doFadeOut = true
 local fadeAfter = 5
@@ -142,6 +141,7 @@ local defaults = {
         textOffsetX = 0,
         textOffsetY = 0,
         textColor = {1,1,1, isClassic and 0.8 or 0.3},
+        textOutline = "", -- can be "OUTLINE" or empty string
         outOfCombatAlpha = 0,
         isVertical = false,
 
@@ -1073,7 +1073,7 @@ function NugEnergy:ResizeText()
     local text = self.text
     local font = getFont()
     local fontSize = NugEnergy.db.profile.fontSize
-    text:SetFont(font,fontSize, textoutline and "OUTLINE")
+    text:SetFont(font,fontSize, NugEnergy.db.profile.textOutline)
     local r,g,b,a = unpack(NugEnergy.db.profile.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
@@ -1364,7 +1364,7 @@ function NugEnergy.Create(self)
     local text = pf:CreateFontString(nil, "OVERLAY")
     local font = getFont()
     local fontSize = NugEnergy.db.profile.fontSize
-    text:SetFont(font,fontSize, textoutline and "OUTLINE")
+    text:SetFont(font,fontSize, NugEnergy.db.profile.textOutline)
 
     local r,g,b,a = unpack(NugEnergy.db.profile.textColor)
     text:SetTextColor(r,g,b)
@@ -2195,6 +2195,7 @@ function NugEnergy:CreateGUI()
                             fontSize = {
                                 name = L"Font Size",
                                 type = "range",
+                                width = 0.7,
                                 order = 2,
                                 get = function(info) return NugEnergy.db.profile.fontSize end,
                                 set = function(info, v)
@@ -2204,6 +2205,21 @@ function NugEnergy:CreateGUI()
                                 min = 5,
                                 max = 80,
                                 step = 1,
+                            },
+                            outline = {
+                                name = L"Ouline",
+                                type = "toggle",
+                                width = 0.6,
+                                order = 2.1,
+                                get = function(info) return NugEnergy.db.profile.textOutline == "OUTLINE" end,
+                                set = function(info, v)
+                                    if NugEnergy.db.profile.textOutline ~= "OUTLINE" then
+                                        NugEnergy.db.profile.textOutline = "OUTLINE"
+                                    else
+                                        NugEnergy.db.profile.textOutline = ""
+                                    end
+                                    NugEnergy:ResizeText()
+                                end,
                             },
                             hideText = {
                                 name = L"Hide Text",
