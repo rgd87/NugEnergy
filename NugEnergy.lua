@@ -10,7 +10,7 @@ local isFull = true
 local isVertical
 
 local APILevel = math.floor(select(4,GetBuildInfo())/10000)
-local isClassic = APILevel <= 3
+local isClassic = APILevel <= 4
 local GetSpecialization = isClassic and function() return 1 end or _G.GetSpecialization
 local GetNumSpecializations = isClassic and function() return 1 end or _G.GetNumSpecializations
 local GetSpecializationInfo = isClassic and function() return nil end or _G.GetSpecializationInfo
@@ -1018,7 +1018,7 @@ function NugEnergy:Resize()
             text:SetJustifyV("TOP")
         elseif textAlign == "CENTER" then
             text:SetPoint("CENTER", f, "CENTER", 0+NugEnergy.db.profile.textOffsetX, 0+NugEnergy.db.profile.textOffsetY)
-            text:SetJustifyV("CENTER")
+            text:SetJustifyV("MIDDLE")
         elseif textAlign == "START" then
             text:SetPoint("BOTTOM", f, "BOTTOM", 0+NugEnergy.db.profile.textOffsetX, 0+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyV("BOTTOM")
@@ -1052,7 +1052,7 @@ function NugEnergy:Resize()
             text:SetJustifyH("LEFT")
         end
 
-        text:SetJustifyV("CENTER")
+        text:SetJustifyV("MIDDLE")
     end
 
     if not onlyText then
