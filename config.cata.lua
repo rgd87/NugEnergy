@@ -1,5 +1,4 @@
 local addonName, ns = ...
-NENNS = ns
 
 local UnitPower = UnitPower
 local APILevel = ns.APILevel
