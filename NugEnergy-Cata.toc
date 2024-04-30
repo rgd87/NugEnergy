@@ -20,6 +20,7 @@ Libs\AceDB-3.0\AceDB-3.0.xml
 NugEnergy.lua
 ticker.lua
 config.lua
+config.cata.lua
 
 Locales\ruRU.lua
 Locales\zhTW.lua

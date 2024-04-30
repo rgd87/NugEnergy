@@ -1,10 +1,13 @@
+local addonName, ns = ...
+
 local UnitPower = UnitPower
 
-local APILevel = math.floor(select(4,GetBuildInfo())/10000)
+ns.APILevel = math.floor(select(4,GetBuildInfo())/10000)
+local APILevel = ns.APILevel
 
 local math_modf = math.modf
 local math_abs = math.abs
-local GetSpecialization = APILevel <= 2 and function() return 1 end or _G.GetSpecialization
+local GetSpecialization = APILevel <= 4 and function() return 1 end or _G.GetSpecialization
 local isMainline = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 local IsAnySpellKnown = function (...)
@@ -95,6 +98,30 @@ local function GENERAL_UPDATE_STEALTH(self)
     self:UpdateVisibility()
 end
 
+local UnitAura = UnitAura
+local function FindAura(unit, spellID, filter)
+    for i=1, 100 do
+        local name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, auraSpellID = UnitAura(unit, i, filter)
+        if not name then return nil end
+        if spellID == auraSpellID then
+            return name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, auraSpellID
+        end
+    end
+end
+
+
+ns.IsAnySpellKnown = IsAnySpellKnown
+ns.GetSpell = GetSpell
+ns.GetPowerBy5 = GetPowerBy5
+ns.UNIT_HEALTH_EXECUTE = UNIT_HEALTH_EXECUTE
+ns.UNIT_HEALTH_EXECUTE_PLAYER_TARGET_CHANGED = UNIT_HEALTH_EXECUTE_PLAYER_TARGET_CHANGED
+ns.MakeGeneralGetPower = MakeGeneralGetPower
+ns.GENERAL_UNIT_POWER_UPDATE = GENERAL_UNIT_POWER_UPDATE
+ns.FILTERED_UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE
+ns.GENERAL_UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+ns.GENERAL_UPDATE_STEALTH = GENERAL_UPDATE_STEALTH
+ns.FindAura = FindAura
+
 
 local GetPower_ClassicRogueTicker = function(PowerTypeIndex, shineZone, cappedZone, minLimit, throttleText)
     local ticker = NugEnergy.ticker
@@ -137,6 +164,26 @@ NugEnergy:RegisterConfig("EnergyRogue", {
 }, "ROGUE")
 
 
+NugEnergy:RegisterConfig("GeneralRage", {
+    triggers = { GetSpecialization },
+    setup = function(self, spec)
+        self:SetPowerFilter("RAGE", Enum.PowerType.Rage)
+        self:SetNormalColor()
+
+        self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+        self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+        GENERAL_UNIT_MAXPOWER(self)
+
+        self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+        self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("RAGE")
+
+        -- self.eventProxy:RegisterUnitEvent("UNIT_HEALTH", "target")
+        -- self.eventProxy.UNIT_HEALTH = UNIT_HEALTH_EXECUTE(0.2)
+
+        -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
+    end,
+}, "TEMPLATE")
+
 
 --------------------------
 --- MAINLINE
@@ -167,25 +214,6 @@ if isMainline then
         end,
     }, "ROGUE")
 
-    NugEnergy:RegisterConfig("GeneralRage", {
-        triggers = { GetSpecialization },
-        setup = function(self, spec)
-            self:SetPowerFilter("RAGE", Enum.PowerType.Rage)
-            self:SetNormalColor()
-
-            self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-            self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
-            GENERAL_UNIT_MAXPOWER(self)
-
-            self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-            self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("RAGE")
-
-            -- self.eventProxy:RegisterUnitEvent("UNIT_HEALTH", "target")
-            -- self.eventProxy.UNIT_HEALTH = UNIT_HEALTH_EXECUTE(0.2)
-
-            -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
-        end,
-    }, "TEMPLATE")
 
     NugEnergy:RegisterConfig("RageWarriorExecute", {
         triggers = { GetSpecialization },
@@ -415,7 +443,7 @@ end
 
 
 -----------------------------------------------
---  CLASSIC AND THE BURNING CRUSADE
+--  CLASSIC AND THE BURNING CRUSADE AND WRATH
 -----------------------------------------------
 if APILevel <= 3 then
 
@@ -453,26 +481,6 @@ if APILevel <= 3 then
             end
         end,
     }, "ROGUE")
-
-    NugEnergy:RegisterConfig("GeneralRage", {
-        triggers = { GetSpecialization },
-        setup = function(self, spec)
-            self:SetPowerFilter("RAGE", Enum.PowerType.Rage)
-            self:SetNormalColor()
-
-            self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-            self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
-            GENERAL_UNIT_MAXPOWER(self)
-
-            self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-            self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("RAGE")
-
-            -- self.eventProxy:RegisterUnitEvent("UNIT_HEALTH", "target")
-            -- self.eventProxy.UNIT_HEALTH = UNIT_HEALTH_EXECUTE(0.2)
-
-            -- self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
-        end,
-    }, "TEMPLATE")
 
 
     if APILevel <= 2 then

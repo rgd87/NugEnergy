@@ -129,6 +129,7 @@ local defaults = {
             ["RAGE"] = ColorArray(PowerBarColor["RAGE"]),
             ["RUNIC_POWER"] = ColorArray(PowerBarColor["RUNIC_POWER"]),
             ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
+            ["BALANCE"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
             ["FURY"] = ColorArray(PowerBarColor["FURY"]),
             ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
             ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
@@ -171,6 +172,22 @@ if APILevel <= 3 then
         WARRIOR = { "RageWarriorClassic", "RageWarriorClassic", "RageWarriorClassic" },
         SHAMAN = { "Disabled", "Disabled", "Disabled" },
         HUNTER = { "Disabled", "Disabled", "Disabled" },
+        PRIEST = { "Disabled", "Disabled", "Disabled" },
+    }
+end
+if APILevel == 4 then
+    defaults.global.classConfig = {
+        ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
+        DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
+        PALADIN = { "Disabled", "Disabled", "Disabled" },
+        MONK = { "Disabled", "Disabled", "Disabled" },
+        WARLOCK = { "Disabled", "Disabled", "Disabled" },
+        DEMONHUNTER = { "Disabled", "Disabled" },
+        DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
+        MAGE = { "Disabled", "Disabled", "Disabled" },
+        WARRIOR = { "RageWarrior", "RageWarrior", "RageWarrior" },
+        SHAMAN = { "Disabled", "Disabled", "Disabled" },
+        HUNTER = { "Focus", "Focus", "Focus" },
         PRIEST = { "Disabled", "Disabled", "Disabled" },
     }
 end
@@ -300,392 +317,6 @@ function NugEnergy.Initialize(self)
     self:RegisterEvent("SPELLS_CHANGED")
     self:SPELLS_CHANGED()
 
-
-    --[===[
-    if class == "ROGUE" and NugEnergy.db.profile.energy then
-        -- PowerFilter = "ENERGY"
-        -- self:SetNormalColor()
-        -- PowerTypeIndex = Enum.PowerType.Energy
-        -- shouldBeFull = true
-        -- self:RegisterEvent("UPDATE_STEALTH")
-        -- self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-
-        -- self.SPELLS_CHANGED = function(self)
-        --     local spec = GetSpecialization()
-        --     self:UnregisterEvent("UNIT_HEALTH")
-        --     self:UnregisterEvent("UNIT_AURA")
-        --     self:RegisterEvent("PLAYER_TARGET_CHANGED")
-        --     if spec == 1 and IsPlayerSpell(111240) then --blindside
-        --         execute_range = 0.30
-        --         self:RegisterUnitEvent("UNIT_HEALTH", "target")
-        --         self:UnregisterEvent("UNIT_AURA")
-        --     elseif spec == 3 then
-        --         self:RegisterUnitEvent("UNIT_AURA", "player")
-        --         self:UnregisterEvent("UNIT_HEALTH")
-        --         self.UNIT_AURA = function(self, event, unit)
-        --             execute = ( FindAura("player", 185422, "HELPFUL") ~= nil)
-        --             self:UpdateEnergy()
-        --         end
-        --     else
-        --         execute_range = nil
-        --         execute = nil
-        --         self:UnregisterEvent("PLAYER_TARGET_CHANGED")
-        --     end
-        -- end
-
-        -- if isClassic and NugEnergy.db.profile.enableClassicTicker then
-        --     GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
-        --     ClassicTickerFrame:Enable()
-        --     self:UpdateBarEffects() -- Will Disable Smoothing
-        --     NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
-        -- else
-        --     GetPower = RageBarGetPower(nil, 5, nil, true)
-        --     if ClassicTickerFrame.isEnabled then
-        --         ClassicTickerFrame:Disable()
-        --         self:UpdateBarEffects()
-        --     end
-        --     NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
-        --     self:RegisterEvent("SPELLS_CHANGED")
-        --     self:SPELLS_CHANGED()
-        -- end
-        -- self:UNIT_MAXPOWER()
-
-    elseif class == "MAGE" and NugEnergy.db.profile.mana then
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            if GetSpecialization() == 1 and NugEnergy.db.profile.mana then
-                PowerFilter = "MANA"
-                PowerTypeIndex = Enum.PowerType.Mana
-                GetPower = ManaBarGetPower()
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-            else
-                self:Disable()
-            end
-            self:UPDATE_STEALTH()
-        end
-        self:SPELLS_CHANGED()
-
-    elseif class == "PALADIN" and NugEnergy.db.profile.mana then
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            if GetSpecialization() == 1 and NugEnergy.db.profile.mana then
-                PowerFilter = "MANA"
-                PowerTypeIndex = Enum.PowerType.Mana
-                GetPower = ManaBarGetPower()
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-            else
-                self:Disable()
-            end
-            self:UPDATE_STEALTH()
-        end
-        self:SPELLS_CHANGED()
-
-    elseif class == "PRIEST" and NugEnergy.db.profile.insanity then
-        local voidform = false
-        local dpCost = 50
-        self.UNIT_AURA = function(self, event, unit)
-            voidform = ( FindAura("player", 194249, "HELPFUL") ~= nil)
-            self:UpdateEnergy()
-        end
-        self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            if GetSpecialization() == 3 then
-                PowerFilter = "INSANITY"
-                PowerTypeIndex = Enum.PowerType.Insanity
-                GetPower = RageBarGetPower(30, 10, dpCost)
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_AURA", "player")
-            elseif NugEnergy.db.profile.mana then
-                PowerFilter = "MANA"
-                PowerTypeIndex = Enum.PowerType.Mana
-                GetPower = ManaBarGetPower()
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-                self:UnregisterEvent("UNIT_AURA");
-            else
-                self:Disable()
-            end
-            self:UPDATE_STEALTH()
-        end
-        self:SPELLS_CHANGED()
-    elseif class == "DRUID" then
-        self:RegisterEvent("UNIT_DISPLAYPOWER")
-        self:RegisterEvent("UPDATE_STEALTH")
-
-        self:SetScript("OnUpdate",self.UpdateEnergy)
-        self.UNIT_DISPLAYPOWER = function(self)
-            local newPowerType = select(2,UnitPowerType("player"))
-            shouldBeFull = false
-
-            -- restore to original MAXPOWER in case it was switched for classic energy
-            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
-            if newPowerType == "ENERGY" and NugEnergy.db.profile.energy then
-                PowerFilter = "ENERGY"
-                PowerTypeIndex = Enum.PowerType.Energy
-                self:SetNormalColor()
-                shouldBeFull = true
-                self:RegisterEvent("UNIT_POWER_UPDATE")
-                self:RegisterEvent("UNIT_MAXPOWER")
-                self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
-                self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy
-                if isClassic and NugEnergy.db.profile.enableClassicTicker then
-                    GetPower = GetPower_ClassicRogueTicker(nil, 19, 0, false)
-                    NugEnergy.UNIT_MAXPOWER = UNIT_MAXPOWER_ClassicTicker
-                    ClassicTickerFrame:Enable()
-                    self:UpdateBarEffects()
-                else
-                    GetPower = RageBarGetPower(nil, 5, nil, true)
-                    if ClassicTickerFrame.isEnabled then
-                        ClassicTickerFrame:Disable()
-                        self:UpdateBarEffects()
-                    end
-                end
-                self:UNIT_MAXPOWER()
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:UPDATE_STEALTH()
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-            elseif newPowerType =="RAGE" and NugEnergy.db.profile.rage then
-                PowerFilter = "RAGE"
-                PowerTypeIndex = Enum.PowerType.Rage
-                self:SetNormalColor()
-                self:RegisterEvent("UNIT_POWER_UPDATE")
-                self:RegisterEvent("UNIT_MAXPOWER")
-                self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
-                self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy
-                GetPower = RageBarGetPower(30, 10, 45)
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:UnregisterEvent("UNIT_POWER_FREQUENT")
-                self:UNIT_MAXPOWER()
-                self:UPDATE_STEALTH()
-            elseif GetSpecialization() == 1 and NugEnergy.db.profile.balance then
-                self:RegisterEvent("UNIT_POWER_UPDATE")
-                self:RegisterEvent("UNIT_MAXPOWER")
-                GetPower = RageBarGetPower(30, 10, 40)
-                PowerFilter = "LUNAR_POWER"
-                PowerTypeIndex = Enum.PowerType.LunarPower
-                self:SetNormalColor()
-                self.PLAYER_REGEN_ENABLED = self.UPDATE_STEALTH
-                self.PLAYER_REGEN_DISABLED = self.UPDATE_STEALTH
-                -- self.UPDATE_STEALTH = self.__UPDATE_STEALTH
-                -- self.UpdateEnergy = self.__UpdateEnergy
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-                self:UNIT_MAXPOWER()
-                self:UPDATE_STEALTH()
-            elseif NugEnergy.db.profile.mana then
-                PowerFilter = "MANA"
-                PowerTypeIndex = Enum.PowerType.Mana
-                GetPower = ManaBarGetPower()
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-                self:UnregisterEvent("UNIT_AURA");
-                self:UPDATE_STEALTH()
-            else
-                self:Disable()
-                self:UPDATE_STEALTH()
-            end
-            self:UpdateEnergy()
-        end
-        self:UNIT_DISPLAYPOWER()
-
-        self.SPELLS_CHANGED = self.UNIT_DISPLAYPOWER
-        self:RegisterEvent("PLAYER_ENTERING_WORLD")
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.PLAYER_ENTERING_WORLD = function(self)
-            C_Timer.After(2, function() self:UNIT_DISPLAYPOWER() end)
-        end
-
-    elseif class == "DEMONHUNTER" and NugEnergy.db.profile.fury then
-        self:RegisterEvent("UNIT_POWER_FREQUENT")
-        GetPower = RageBarGetPower(30, 10)
-        PowerFilter = "FURY"
-        PowerTypeIndex = Enum.PowerType.Fury
-        self:SetNormalColor()
-        self:UpdateEnergy()
-
-    elseif class == "MONK" and NugEnergy.db.profile.energy then
-        self:RegisterEvent("UNIT_DISPLAYPOWER")
-        self.UNIT_DISPLAYPOWER = function(self)
-            local newPowerType = select(2,UnitPowerType("player"))
-            if newPowerType == "ENERGY" then
-                PowerFilter = "ENERGY"
-                PowerTypeIndex = Enum.PowerType.Energy
-                self:SetNormalColor()
-                shouldBeFull = true
-                -- GetPower = GetPowerBy5
-                -- GetPower = function(unit)
-                --     local p, p2 = GetPowerBy5(unit)
-                --     local pmax = UnitPowerMax(unit)
-                --     -- local shine = p >= pmax-30
-                --     local capped = p == pmax
-                --     local insufficient
-                --     if p < 50 and GetSpecialization() == 3 then insufficient = true end
-                --     return p, p2, execute, shine, capped, insufficient
-                -- end
-                if GetSpecialization() == 3 then
-                    GetPower = RageBarGetPower(-1, 5, 50, true)
-                else
-                    GetPower = RageBarGetPower(10, 5, 25, true)
-                end
-
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            elseif NugEnergy.db.profile.mana then
-                PowerFilter = "MANA"
-                PowerTypeIndex = Enum.PowerType.Mana
-                GetPower = ManaBarGetPower()
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            else
-                self:Disable()
-            end
-            self:UPDATE_STEALTH()
-        end
-        self:UNIT_DISPLAYPOWER()
-
-    --[[
-    elseif class == "WARLOCK" and NugEnergy.db.profile.shards then
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            local spec = GetSpecialization()
-            local ShardsPowerTypeIndex = Enum.PowerType.SoulShards
-            -- GetPower = function(unit) return UnitPower(unit, SPELL_POWER_SOUL_SHARDS) end
-            GetPower = function(unit)
-                local p = UnitPower(unit, ShardsPowerTypeIndex, true)
-                local pmax = UnitPowerMax(unit, ShardsPowerTypeIndex, true)
-                -- p, p2, execute, shine, capped, insufficient
-                return p, math_modf(p/10), nil, nil, p == pmax, nil
-            end
-            GetPowerMax = function(unit) return UnitPowerMax(unit, ShardsPowerTypeIndex, true) end
-            PowerFilter = "SOUL_SHARDS"
-        end
-        self:SPELLS_CHANGED()
-    ]]
-    elseif class == "DEATHKNIGHT" and NugEnergy.db.profile.runic then
-        PowerFilter = "RUNIC_POWER"
-        PowerTypeIndex = Enum.PowerType.RunicPower
-        self:SetNormalColor()
-
-        local MakeGetPowerUsableSpell = function(shineZone, cappedZone, minCheckSpellID, throttleText)
-            return function(unit)
-                local p = UnitPower(unit, PowerTypeIndex)
-                local pmax = UnitPowerMax(unit, PowerTypeIndex)
-                local _, nomana = IsUsableSpell(minCheckSpellID)
-                local shine = shineZone and (p >= pmax-shineZone)
-                local capped = p >= pmax-cappedZone
-                local p2 = throttleText and math_modf(p/5)*5
-                return p, p2, execute, shine, capped, nomana
-            end
-        end
-
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            self:UnregisterEvent("UNIT_AURA")
-            if GetSpecialization() == 1 then
-                GetPower = MakeGetPowerUsableSpell(30, 10, 49998, nil)
-                self:RegisterUnitEvent("UNIT_AURA", "player")
-                self.UNIT_AURA = self.UpdateEnergy
-            elseif GetSpecialization() == 2 then
-                GetPower = RageBarGetPower(30, 10, 25, nil)
-            else
-                GetPower = RageBarGetPower(30, 10, nil, nil)
-            end
-        end
-        self:SPELLS_CHANGED()
-
-    elseif class == "WARRIOR" and NugEnergy.db.profile.rage then
-        PowerFilter = "RAGE"
-        PowerTypeIndex = Enum.PowerType.Rage
-        self:SetNormalColor()
-
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            local spec = GetSpecialization()
-            if spec == 1 then
-                execute_range = IsPlayerSpell(281001) and 0.35 or 0.2 -- Arms Massacre
-                GetPower = RageBarGetPower(30, 10, nil, nil)
-                self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:RegisterEvent("PLAYER_TARGET_CHANGED")
-            elseif spec == 2 then
-                execute_range = IsPlayerSpell(206315) and 0.35 or 0.2 -- Fury Massacre
-                local maxRage = UnitPowerMax("player", PowerTypeIndex)
-
-                local rampageCost = 80
-                GetPower = RageBarGetPower(maxRage-rampageCost, maxRage-rampageCost, nil, nil)
-
-                self:RegisterUnitEvent("UNIT_HEALTH", "target")
-                self:RegisterEvent("PLAYER_TARGET_CHANGED")
-            else
-                execute_range = nil
-                execute = nil
-                GetPower = RageBarGetPower(30, 10, 30, nil)
-                self:UnregisterEvent("UNIT_HEALTH")
-                self:UnregisterEvent("PLAYER_TARGET_CHANGED")
-            end
-        end
-        self:SPELLS_CHANGED()
-
-    elseif class == "HUNTER" and NugEnergy.db.profile.focus then
-        PowerFilter = "FOCUS"
-        PowerTypeIndex = Enum.PowerType.Focus
-        self:SetNormalColor()
-        shouldBeFull = true
-        self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-        GetPower = GetPowerBy5
-
-    elseif class == "SHAMAN" and NugEnergy.db.profile.maelstrom then
-        PowerFilter = "MAELSTROM"
-        PowerTypeIndex = Enum.PowerType.Maelstrom
-        self:SetNormalColor()
-        GetPower = RageBarGetPower(30, 10, 60)
-
-        self:RegisterEvent("SPELLS_CHANGED")
-        self.SPELLS_CHANGED = function(self)
-            local spec = GetSpecialization()
-            if spec == 1 then
-                PowerFilter = "MAELSTROM"
-                PowerTypeIndex = Enum.PowerType.Maelstrom
-                self:RegisterEvent("UNIT_MAXPOWER")
-                self:RegisterEvent("UNIT_POWER_FREQUENT");
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            elseif NugEnergy.db.profile.mana then
-                PowerFilter = "MANA"
-                PowerTypeIndex = Enum.PowerType.Mana
-                GetPower = ManaBarGetPower()
-                self:SetNormalColor()
-                self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-                self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-                self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            else
-                self:Disable()
-            end
-            self:UPDATE_STEALTH()
-        end
-        self:SPELLS_CHANGED()
-    else
-        self:UnregisterAllEvents()
-        self:SetScript("OnUpdate", nil)
-        self:Hide()
-        return false
-    end
-
-    ]===]
-
     self:UPDATE_STEALTH()
     self:UpdateEnergy()
     return true
@@ -728,7 +359,7 @@ function NugEnergy.UpdateEnergy(self, elapsed)
             c = normalColor
             self.glowanim:SetDuration(0.3)
         end
-        -- self.spentBar:SetColor(unpack(c))
+
         self:SetColor(unpack(c))
 
         if APILevel <= 2 and PowerTypeIndex == Enum_PowerType_Energy then
@@ -977,8 +608,22 @@ local function hsv_shift(src, hm,sm,vm)
 end
 
 
+local colorOverride = nil
+-- local cor, cog, cob = 1,1,1
+function NugEnergy:DisableColorOverride()
+    colorOverride = nil
+end
+function NugEnergy:SetColorOverride(r,g,b)
+    colorOverride = {r,g,b}
+    self:SetNormalColor()
+end
+
 function NugEnergy:SetNormalColor()
-    if NugEnergy.db.profile.enableColorByPowerType and PowerFilter then
+    if colorOverride then
+        normalColor = colorOverride
+        lowColor = { hsv_shift(normalColor, -0.07, -0.22, -0.3) }
+        maxColor = { hsv_shift(normalColor, 0, -0.3, -0.4) }
+    elseif NugEnergy.db.profile.enableColorByPowerType and PowerFilter then
         normalColor = NugEnergy.db.profile.powerTypeColors[PowerFilter]
         lowColor = { hsv_shift(normalColor, -0.07, -0.22, -0.3) }
         maxColor = { hsv_shift(normalColor, 0, -0.3, -0.4) }
@@ -2600,6 +2245,7 @@ end
 
 function NugEnergy:ResetConfig()
     table.wipe(self.flags)
+    self:DisableColorOverride()
     self.eventProxy:UnregisterAllEvents()
     self.eventProxy:SetScript("OnUpdate", nil)
     self:UpdateBarEffects()
