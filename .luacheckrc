@@ -126,5 +126,6 @@ globals = {
     "PowerBarColor",
     "GetCVar",
     "BackdropTemplateMixin",
-    "UnitReaction"
+    "UnitReaction",
+    "Settings",
 }
