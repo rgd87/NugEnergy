@@ -1,6 +1,12 @@
-## Interface: 50001
+## Interface: 11200
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
 ## SavedVariables: NugEnergyDB
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\AceCore-3.0\AceCore-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+
 NugEnergy.lua
