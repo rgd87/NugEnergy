@@ -11,9 +11,10 @@ local isVertical
 
 local APILevel = math.floor(select(4,GetBuildInfo())/10000)
 local isClassic = APILevel <= 4
-local GetSpecialization = isClassic and function() return 1 end or _G.GetSpecialization
-local GetNumSpecializations = isClassic and function() return 1 end or _G.GetNumSpecializations
-local GetSpecializationInfo = isClassic and function() return nil end or _G.GetSpecializationInfo
+local GlobalGetSpecialization = C_SpecializationInfo and C_SpecializationInfo.GetSpecialization or _G.GetSpecialization
+local GetSpecialization = isClassic and function() return 1 end or GlobalGetSpecialization
+local GetNumSpecializations = APILevel <= 4 and function() return 1 end or _G.GetNumSpecializations
+local GetSpecializationInfo = APILevel <= 4 and function() return nil end or (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo or _G.GetSpecializationInfo)
 
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
@@ -181,6 +182,22 @@ if APILevel == 4 then
         DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
         PALADIN = { "Disabled", "Disabled", "Disabled" },
         MONK = { "Disabled", "Disabled", "Disabled" },
+        WARLOCK = { "Disabled", "Disabled", "Disabled" },
+        DEMONHUNTER = { "Disabled", "Disabled" },
+        DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
+        MAGE = { "Disabled", "Disabled", "Disabled" },
+        WARRIOR = { "RageWarrior", "RageWarrior", "RageWarrior" },
+        SHAMAN = { "Disabled", "Disabled", "Disabled" },
+        HUNTER = { "Focus", "Focus", "Focus" },
+        PRIEST = { "Disabled", "Disabled", "Disabled" },
+    }
+end
+if APILevel == 5 then
+    defaults.global.classConfig = {
+        ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
+        DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
+        PALADIN = { "Disabled", "Disabled", "Disabled" },
+        MONK = { "EnergyMonk", "EnergyMonk", "EnergyMonk" },
         WARLOCK = { "Disabled", "Disabled", "Disabled" },
         DEMONHUNTER = { "Disabled", "Disabled" },
         DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },

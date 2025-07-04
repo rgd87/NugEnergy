@@ -128,4 +128,6 @@ globals = {
     "BackdropTemplateMixin",
     "UnitReaction",
     "Settings",
+
+    "C_SpecializationInfo",
 }
