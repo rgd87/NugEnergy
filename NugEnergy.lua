@@ -17,7 +17,7 @@ NugEnergy:SetScript("OnEvent", function()
 	return this[event](this, event, arg1, arg2, arg3)
 end)
 NugEnergy:RegisterEvent("PLAYER_LOGIN");
-NugEnergy:RegisterEvent("PLAYER_LOGOUT");
+-- NugEnergy:RegisterEvent("PLAYER_LOGOUT");
 local UnitPower = UnitPower
 local math_modf = math.modf
 
@@ -31,7 +31,7 @@ local isEmpty = true
 local doFadeOut = true
 local fadeAfter = 5
 local fadeTime = 1
-
+local GetPower2
 
 local PowerTypeEnum = {
     MANA = 0,
@@ -48,6 +48,8 @@ local defaults = {
         fontSize = 25,
         energy = true,
         rage = true,
+        swingTicks = false,
+        swingBar = true,
         enableColorByPowerType = false,
         normalColor = { 0.9, 0.1, 0.1 }, --1
         altColor = { 0.9, 0.168, 0.43 }, -- for dispatch and meta 2
@@ -130,7 +132,7 @@ function NugEnergy.PLAYER_LOGIN(self,event,arg1)
 end
 
 -- function NugComboBar:PLAYER_LOGOUT(event)
--- 	RemoveDefaults(db, defaults)
+	-- RemoveDefaults(db, defaults)
 -- end
 
 
@@ -244,6 +246,68 @@ end
 
 
 
+-- Swing Timer Ticker
+local lastSwingTime = GetTime()
+local autoAttackSpells = {
+    ["Heroic Strike"] = true,
+    ["Cleave"] = true,
+    ["Maul"] = true,
+}
+function ClassicTickerFrame:CHAT_MSG_COMBAT_SELF_HITS(event, arg1)
+    lastSwingTime = GetTime()
+end
+ClassicTickerFrame.CHAT_MSG_COMBAT_SELF_MISSES = ClassicTickerFrame.CHAT_MSG_COMBAT_SELF_HITS
+
+
+function ClassicTickerFrame:CHAT_MSG_SPELL_SELF_DAMAGE(event, arg1)
+    local arg1 = arg1
+    local a, b, spell = string.find(arg1, "Your (.+) hits")
+
+    if not spell then a, b, spell = string.find(arg1, "Your (.+) crits") end
+    if not spell then a, b, spell = string.find(arg1, "Your (.+) is") end
+    if not spell then a, b, spell = string.find(arg1, "Your (.+) misses") end
+
+    if spell then
+        if autoAttackSpells[spell] then
+            lastSwingTime = GetTime()
+        end
+    else
+        lastSwingTime = GetTime()
+    end
+end
+local UNIT_ATTACK_SPEED_SwingTicker = function(self)
+    local mainHandSpeed, offHandSpeed = UnitAttackSpeed("player")
+    self:SetMinMaxValues(0, mainHandSpeed)
+end
+local UNIT_ATTACK_SPEED_SwingTicker_SecondBar = function(self)
+    local mainHandSpeed, offHandSpeed = UnitAttackSpeed("player")
+    self.secondBar:SetMinMaxValues(0, mainHandSpeed)
+end
+ClassicTickerFrame.EnableSwings = function(self)
+    self:SetScript("OnEvent", function()
+        return this[event](this, event, arg1, arg2, arg3)
+    end)
+    self:RegisterEvent("CHAT_MSG_COMBAT_SELF_MISSES")
+    self:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS")
+    self:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE") -- spell hits
+end
+local GetPower_RageSwingTimer = function(shineZone, cappedZone, minLimit, throttleText)
+    return function(unit)
+        local p = GetTime() - lastSwingTime
+        local p2 = UnitMana(unit)
+        local pmax = UnitManaMax(unit)
+        local shine = shineZone and (p >= pmax-shineZone)
+        local capped = p2 >= pmax-cappedZone
+        return p, p2, execute, shine, capped, (minLimit and p < minLimit)
+    end
+end
+local GetPower2_SwingTimer = function(unit)
+    return GetTime() - lastSwingTime
+end
+--
+
+
+
 -- Power Getter Gen
 local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
     return function(unit)
@@ -329,6 +393,7 @@ function NugEnergy.Initialize(self)
             self:UnregisterEvent("UNIT_ENERGY")
             self:UnregisterEvent("UNIT_MAXENERGY")
             self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+            self:UnregisterEvent("UNIT_ATTACK_SPEED")
             self:SetScript("OnUpdate", nil)
             self:UPDATE_STEALTH()
         end
@@ -347,6 +412,9 @@ function NugEnergy.Initialize(self)
         self.UNIT_DISPLAYPOWER = function(self)
             local newPowerType = UnitPowerType("player")
             shouldBeFull = false
+
+            GetPower2 = nil
+            self.secondBar:Hide()
 
             if newPowerType == PowerTypeEnum.ENERGY and db.profile.energy then
                 PowerFilter = PowerTypeEnum.ENERGY
@@ -391,6 +459,27 @@ function NugEnergy.Initialize(self)
                 self:SetScript("OnUpdate", nil)
                 self:UNIT_MAXPOWER()
                 self:UPDATE_STEALTH()
+
+
+                if db.profile.swingBar then
+                    GetPower2 = GetPower2_SwingTimer
+                    self.secondBar:Show()
+                    ClassicTickerFrame:EnableSwings()
+                    self:SetScript("OnUpdate",function() NugEnergy:UpdateEnergy() end)
+                    self:RegisterEvent("UNIT_ATTACK_SPEED")
+                    NugEnergy.UNIT_ATTACK_SPEED = UNIT_ATTACK_SPEED_SwingTicker_SecondBar
+                    NugEnergy:UNIT_ATTACK_SPEED()
+                elseif db.profile.swingTicks then
+                    GetPower = GetPower_RageSwingTimer(30, 10, nil, nil)
+                    ClassicTickerFrame:EnableSwings()
+                    self:SetScript("OnUpdate",function() NugEnergy:UpdateEnergy() end)
+                    self:RegisterEvent("UNIT_ATTACK_SPEED")
+                    self:UnregisterEvent("UNIT_MAXRAGE")
+                    NugEnergy.UNIT_ATTACK_SPEED = UNIT_ATTACK_SPEED_SwingTicker
+                    NugEnergy.UNIT_MAXPOWER = NugEnergy.UNIT_ATTACK_SPEED
+                    NugEnergy:UNIT_ATTACK_SPEED()
+                end
+
             elseif newPowerType == PowerTypeEnum.MANA then
                 shouldBeFull = true
                 local druidPowershifting = true
@@ -421,6 +510,31 @@ function NugEnergy.Initialize(self)
 
 
         GetPower = RageBarGetPower(30, 10, nil, nil)
+        GetPower2 = nil
+
+
+        self.secondBar:Hide()
+
+        if db.profile.swingBar then
+            GetPower2 = GetPower2_SwingTimer
+            self.secondBar:Show()
+            ClassicTickerFrame:EnableSwings()
+            self:SetScript("OnUpdate",function() NugEnergy:UpdateEnergy() end)
+            self:RegisterEvent("UNIT_ATTACK_SPEED")
+            NugEnergy.UNIT_ATTACK_SPEED = UNIT_ATTACK_SPEED_SwingTicker_SecondBar
+            NugEnergy:UNIT_ATTACK_SPEED()
+        elseif db.profile.swingTicks then
+            GetPower = GetPower_RageSwingTimer(30, 10, nil, nil)
+            ClassicTickerFrame:EnableSwings()
+            self:SetScript("OnUpdate",function() NugEnergy:UpdateEnergy() end)
+            self:RegisterEvent("UNIT_ATTACK_SPEED")
+            self:UnregisterEvent("UNIT_MAXRAGE")
+            NugEnergy.UNIT_ATTACK_SPEED = UNIT_ATTACK_SPEED_SwingTicker
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.UNIT_ATTACK_SPEED
+        else
+            self:UnregisterEvent("UNIT_ATTACK_SPEED")
+            NugEnergy.UNIT_MAXPOWER = NugEnergy.NORMAL_UNIT_MAXPOWER
+        end
         -- if IsAnySpellKnown(20662, 20661, 20660, 20658, 5308) then
         --     execute_range = 0.2
         --     self:RegisterUnitEvent("UNIT_HEALTH", "target")
@@ -537,6 +651,10 @@ function NugEnergy.UpdateEnergy(self)
         end
 
         self:SetValue(p)
+
+        if GetPower2 then
+            self.secondBar:SetValue(GetPower2("player"))
+        end
     end
 end
 function NugEnergy.UNIT_MAXPOWER(self)
@@ -559,8 +677,10 @@ end
 NugEnergy.UNIT_AURA = NugEnergy.UPDATE_STEALTH
 
 
-function NugEnergy:UpdateFrameBorder()
+function NugEnergy:UpdateFrameBorder(overrideFrame)
     local borderType = NugEnergy.db.profile.borderType
+
+    if overrideFrame then self = overrideFrame end
 
     if self.border then self.border:Hide() end
     if self.backdrop then self.backdrop:Hide() end
@@ -660,6 +780,27 @@ function NugEnergy.Create(self)
         f:UNIT_MAXPOWER()
     end
 
+
+
+    local secondBar = CreateFrame("StatusBar", "NugEnergySwings", f)
+    secondBar:SetStatusBarTexture(tex)
+    local swingColor = { 0.7, 0.6, 0.9 }
+    secondBar:SetStatusBarColor(unpack(swingColor))
+    self:UpdateFrameBorder(secondBar)
+    secondBar:SetWidth(width)
+    secondBar:SetHeight(height/3)
+    secondBar:SetPoint("TOP", f, "BOTTOM", 0, -3)
+    local sbbg = secondBar:CreateTexture(nil,"BACKGROUND")
+    sbbg:SetTexture(tex)
+    sbbg:SetVertexColor(swingColor[1]/3, swingColor[2]/3, swingColor[3]/3)
+    sbbg:SetAllPoints(secondBar)
+    secondBar.bg = sbbg
+    secondBar:Hide()
+
+    f.secondBar = secondBar
+
+
+
     local text = f:CreateFontString(nil, "OVERLAY")
     -- text:SetFont(font,fontSize)
     text:SetPoint("TOPLEFT",f,"TOPLEFT",0,0)
@@ -706,6 +847,8 @@ function NugEnergy.SlashCmd(msg)
       |cff00ff00/nen lock|r
       |cff00ff00/nen unlock|r
       |cff00ff00/nen rage|r
+      |cff00ff00/nen swingticks - swings on the main bar (only for Rage classes)|r
+      |cff00ff00/nen swingbar - swings on a separate bar, replaces ticks|r
       |cff00ff00/nen energy|r
       |cff00ff00/nen powerTypeColor|r
       |cff00ff00/nen tickWindow|r
@@ -735,6 +878,16 @@ function NugEnergy.SlashCmd(msg)
 
     if k == "rage" then
         db.profile.rage = not db.profile.rage
+        NugEnergy:Initialize()
+    end
+
+    if k == "swingticks" then
+        db.profile.swings = not db.profile.swings
+        NugEnergy:Initialize()
+    end
+
+    if k == "swingbar" then
+        db.profile.swingBar = not db.profile.swingBar
         NugEnergy:Initialize()
     end
 
