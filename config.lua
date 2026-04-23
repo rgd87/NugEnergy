@@ -8,7 +8,10 @@ local APILevel = ns.APILevel
 local math_modf = math.modf
 local math_abs = math.abs
 local GetSpecialization = APILevel <= 4 and function() return 1 end or _G.GetSpecialization
-local isMainline = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local isMainline = false
+
+
+local IsPlayerSpell = IsPlayerSpell or IsSpellKnown
 
 local IsAnySpellKnown = function (...)
     for i=1, select("#", ...) do
@@ -82,6 +85,10 @@ end
 local function GENERAL_UNIT_POWER_UPDATE(self, event, unit, powertype)
     self:UpdateEnergy()
 end
+local function GENERAL_UNIT_POWER_UPDATE_FROM_PLAYER(self, event, unit, powertype)
+    if unit ~= "player" then return end
+    self:UpdateEnergy()
+end
 
 local function FILTERED_UNIT_POWER_UPDATE(PowerFilter)
     return function(self, event, unit, powertype)
@@ -90,6 +97,12 @@ local function FILTERED_UNIT_POWER_UPDATE(PowerFilter)
 end
 
 local function GENERAL_UNIT_MAXPOWER(self)
+    local _, ptIndex = self:GetPowerFilter()
+    self:SetMinMaxValues(0, UnitPowerMax("player", ptIndex))
+end
+
+local function GENERAL_UNIT_MAXPOWER_FROM_PLAYER(self, event, unit)
+    if unit ~= "player" then return end
     local _, ptIndex = self:GetPowerFilter()
     self:SetMinMaxValues(0, UnitPowerMax("player", ptIndex))
 end
@@ -167,15 +180,15 @@ NugEnergy:RegisterConfig("EnergyRogue", {
 NugEnergy:RegisterConfig("GeneralRage", {
     triggers = { GetSpecialization },
     setup = function(self, spec)
-        self:SetPowerFilter("RAGE", Enum.PowerType.Rage)
+        self:SetPowerFilter("RAGE", SPELL_POWER_RAGE)
         self:SetNormalColor()
 
-        self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-        self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+        self.eventProxy:RegisterEvent("UNIT_MAXRAGE")
+        self.eventProxy.UNIT_MAXRAGE = GENERAL_UNIT_MAXPOWER_FROM_PLAYER
         GENERAL_UNIT_MAXPOWER(self)
 
-        self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-        self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("RAGE")
+        self.eventProxy:RegisterEvent("UNIT_RAGE")
+        self.eventProxy.UNIT_RAGE = GENERAL_UNIT_POWER_UPDATE_FROM_PLAYER
 
         -- self.eventProxy:RegisterUnitEvent("UNIT_HEALTH", "target")
         -- self.eventProxy.UNIT_HEALTH = UNIT_HEALTH_EXECUTE(0.2)
@@ -451,28 +464,29 @@ if APILevel <= 3 then
     NugEnergy:RegisterConfig("EnergyRogue", {
         triggers = { GetSpecialization },
         setup = function(self, spec)
-            self:SetPowerFilter("ENERGY", Enum.PowerType.Energy)
+            self:SetPowerFilter("ENERGY", SPELL_POWER_ENERGY)
             self:SetNormalColor()
             self.flags.shouldBeFull = true
 
             self.eventProxy:RegisterEvent("UPDATE_STEALTH")
             self.eventProxy.UPDATE_STEALTH = GENERAL_UPDATE_STEALTH
 
-            self.eventProxy:RegisterUnitEvent("UNIT_MAXPOWER", "player")
-            self.eventProxy.UNIT_MAXPOWER = GENERAL_UNIT_MAXPOWER
+            self.eventProxy:RegisterEvent("UNIT_MAXENERGY")
+            self.eventProxy.UNIT_MAXENERGY = GENERAL_UNIT_MAXPOWER_FROM_PLAYER
             GENERAL_UNIT_MAXPOWER(self)
 
-            self.eventProxy:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
-            self.eventProxy.UNIT_POWER_UPDATE = FILTERED_UNIT_POWER_UPDATE("ENERGY")
+            self.eventProxy:RegisterEvent("UNIT_ENERGY")
+            self.eventProxy.UNIT_ENERGY = GENERAL_UNIT_POWER_UPDATE_FROM_PLAYER
 
-            self.eventProxy:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
-            self.eventProxy.UNIT_POWER_FREQUENT = FILTERED_UNIT_POWER_UPDATE("ENERGY")
+            self.eventProxy:RegisterEvent("UNIT_ENERGY_FREQUENT")
+            self.eventProxy.UNIT_ENERGY_FREQUENT = GENERAL_UNIT_POWER_UPDATE_FROM_PLAYER
+            local isEpoch = true
 
-            self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Energy, nil, 5, nil, true))
+            self:SetPowerGetter(MakeGeneralGetPower(SPELL_POWER_ENERGY, nil, 5, nil, true))
 
             local isTickerEnabled = self.db.profile.enableClassicTicker
-            if isTickerEnabled and APILevel <= 2 then
-                self:SetPowerGetter(GetPower_ClassicRogueTicker(Enum.PowerType.Energy, nil, 19, 0, false))
+            if isTickerEnabled and (APILevel <= 2 or isEpoch) then
+                self:SetPowerGetter(GetPower_ClassicRogueTicker(SPELL_POWER_ENERGY, nil, 19, 0, false))
                 self.eventProxy:SetScript("OnUpdate", function() NugEnergy:UpdateEnergy() end)
                 self.eventProxy:UnregisterEvent("UNIT_MAXPOWER")
                 self:SetMinMaxValues(0, 2)
@@ -631,7 +645,7 @@ if APILevel <= 3 then
                 self.eventProxy.PLAYER_TARGET_CHANGED = UNIT_HEALTH_EXECUTE_PLAYER_TARGET_CHANGED
             end
 
-            self:SetPowerGetter(MakeGeneralGetPower(Enum.PowerType.Rage, 30, 10, nil, nil))
+            self:SetPowerGetter(MakeGeneralGetPower(SPELL_POWER_RAGE, 30, 10, nil, nil))
         end,
     }, "WARRIOR")
 

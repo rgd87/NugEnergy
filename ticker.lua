@@ -14,8 +14,8 @@ local GetPower_ClassicRogueTicker = function(shineZone, cappedZone, minLimit, th
     end
 end
 ]==]
-local EPT = Enum.PowerType
-local Enum_PowerType_Energy = EPT.Energy
+-- local EPT = Enum.PowerType
+local Enum_PowerType_Energy = SPELL_POWER_ENERGY
 
 local tickFiltering = true
 local ClassicTickerFrame = CreateFrame("Frame")

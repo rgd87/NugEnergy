@@ -19,7 +19,6 @@ local GetSpecializationInfo = APILevel <= 4 and function() return nil end or (C_
 NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
 
 NugEnergy:SetScript("OnEvent", function(self, event, ...)
-    -- print(event, unpack{...})
     return self[event](self, event, ...)
 end)
 
@@ -63,11 +62,9 @@ local execute_range = nil
 local upvalueInCombat = nil
 
 local EPT = Enum.PowerType
-local Enum_PowerType_Insanity = EPT.Insanity
-local Enum_PowerType_Energy = EPT.Energy
-local Enum_PowerType_RunicPower = EPT.RunicPower
-local Enum_PowerType_LunarPower = EPT.LunarPower
-local Enum_PowerType_Focus = EPT.Focus
+local Enum_PowerType_Rage = SPELL_POWER_Rage
+local Enum_PowerType_Energy = SPELL_POWER_ENERGY
+local Enum_PowerType_Focus = SPELL_POWER_FOCUS
 local class = select(2,UnitClass("player"))
 local UnitAura = UnitAura
 
@@ -112,7 +109,7 @@ local defaults = {
         hideBar = false,
         enableClassicTicker = true,
         spenderFeedback = not isClassic,
-        borderType = "2PX",
+        borderType = "STATUSBAR",
         smoothing = true,
         smoothingSpeed = 6, -- 1 - 8
 
@@ -128,12 +125,12 @@ local defaults = {
             ["ENERGY"] = ColorArray(PowerBarColor["ENERGY"]),
             ["FOCUS"] = ColorArray(PowerBarColor["FOCUS"]),
             ["RAGE"] = ColorArray(PowerBarColor["RAGE"]),
-            ["RUNIC_POWER"] = ColorArray(PowerBarColor["RUNIC_POWER"]),
-            ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
-            ["BALANCE"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
-            ["FURY"] = ColorArray(PowerBarColor["FURY"]),
-            ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
-            ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
+            -- ["RUNIC_POWER"] = ColorArray(PowerBarColor["RUNIC_POWER"]),
+            -- ["LUNAR_POWER"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
+            -- ["BALANCE"] = ColorArray(PowerBarColor["LUNAR_POWER"]),
+            -- ["FURY"] = ColorArray(PowerBarColor["FURY"]),
+            -- ["INSANITY"] = ColorArray(PowerBarColor["INSANITY"]),
+            -- ["MAELSTROM"] = ColorArray(PowerBarColor["MAELSTROM"]),
             ["MANA"] = ColorArray(PowerBarColor["MANA"]),
         },
         textureName = "Glamour7",
@@ -903,8 +900,7 @@ function NugEnergy.Create(self)
     -- sa1:SetOrder(1)
 
     local sa2 = trail:CreateAnimation("Alpha")
-    sa2:SetFromAlpha(1)
-    sa2:SetToAlpha(0)
+    sa2:SetChange(-1)
     -- sa2:SetSmoothing("IN")
     sa2:SetDuration(0.6)
     sa2:SetOrder(1)
@@ -959,8 +955,7 @@ function NugEnergy.Create(self)
     local sag = at:CreateAnimationGroup()
     sag:SetLooping("BOUNCE")
     local sa1 = sag:CreateAnimation("Alpha")
-    sa1:SetFromAlpha(0)
-    sa1:SetToAlpha(1)
+    sa1:SetChange(1)
     sa1:SetDuration(0.3)
     sa1:SetOrder(1)
     -- local sa2 = sag:CreateAnimation("Alpha")
