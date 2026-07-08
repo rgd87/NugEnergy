@@ -229,11 +229,11 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     -- NugEnergyDB = self.db
     -- SetupDefaults(NugEnergyDB, defaults)
 
-    local res = GetCVar("gxWindowedResolution")
-    if res then
-        local w,h = string.match(res, "(%d+)x(%d+)")
-        pmult = (768/h) / UIParent:GetScale()
-    end
+    -- local res = GetCVar("gxWindowedResolution")
+    -- if res then
+    --     local w,h = string.match(res, "(%d+)x(%d+)")
+    --     pmult = (768/h) / UIParent:GetScale()
+    -- end
 
     NugEnergy:UpdateUpvalues()
 
