@@ -197,7 +197,7 @@ NugEnergy:RegisterConfig("GeneralRage", {
                 elseif newPowerType == "RAGE" then
                     self:ApplyConfig("RageDruid")
                     self:Update()
-                elseif GetSpecialization() == 1 then
+                elseif isMainline and GetSpecialization() == 1 then
                     self:ApplyConfig("LunarPower")
                     self:Update()
                 else
