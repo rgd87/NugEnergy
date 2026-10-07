@@ -2,6 +2,7 @@
 ## Title: NugEnergy
 ## Notes: Energy monitor
 ## Author: d87
+## IconTexture: 132819
 ## SavedVariables: NugEnergyDB
 ## SavedVariablesPerCharacter: NugEnergyDB_Character
 ## Version: @project-version@
