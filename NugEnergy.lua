@@ -10,13 +10,15 @@ local isFull = true
 local isVertical
 
 local APILevel = math.floor(select(4,GetBuildInfo())/10000)
-local isClassic = APILevel <= 4
+local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+local isMainline = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local isForever = WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
 local GlobalGetSpecialization = C_SpecializationInfo and C_SpecializationInfo.GetSpecialization or _G.GetSpecialization
-local GetSpecialization = isClassic and function() return 1 end or GlobalGetSpecialization
-local GetNumSpecializations = APILevel <= 4 and function() return 1 end or _G.GetNumSpecializations
-local GetSpecializationInfo = APILevel <= 4 and function() return nil end or (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo or _G.GetSpecializationInfo)
+local GetSpecialization = isForever and function() return 1 end or GlobalGetSpecialization
+local GetNumSpecializations = isForever and function() return 1 end or _G.GetNumSpecializations
+local GetSpecializationInfo = isForever and function() return nil end or (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo or _G.GetSpecializationInfo)
 
-NugEnergy = CreateFrame("StatusBar","NugEnergy",UIParent)
+NugEnergy = CreateFrame("Frame","NugEnergy",UIParent)
 
 NugEnergy:SetScript("OnEvent", function(self, event, ...)
     -- print(event, unpack{...})
@@ -55,11 +57,12 @@ local math_max = math.max
 local PowerFilter
 local PowerTypeIndex
 local ForcedToShow
-local GetPower = UnitPower
-local GetPowerMax = UnitPowerMax
+local GetPower = function() return 0,0,0 end
+local GetPowerMax-- = UnitPowerMax
 
-local execute = false
-local execute_range = nil
+local colorCurve
+
+local executeRange = nil
 local upvalueInCombat = nil
 
 local EPT = Enum.PowerType
@@ -69,7 +72,8 @@ local Enum_PowerType_RunicPower = EPT.RunicPower
 local Enum_PowerType_LunarPower = EPT.LunarPower
 local Enum_PowerType_Focus = EPT.Focus
 local class = select(2,UnitClass("player"))
-local UnitAura = UnitAura
+local executeCurve = C_CurveUtil.CreateCurve();
+executeCurve:SetType(Enum.LuaCurveType.Step)
 
 local ColorArray = function(color) return {color.r, color.g, color.b} end
 
@@ -82,8 +86,8 @@ local defaults = {
             MONK = { "EnergyBrewmaster", "Disabled", "EnergyWindwalker" },
             WARLOCK = { "Disabled", "Disabled", "Disabled" },
             DEMONHUNTER = { "FuryDemonHunter", "FuryDemonHunter" },
-            DEATHKNIGHT = { "RunicPowerDeathstrike", "RunicPower", "RunicPower" },
-            MAGE = { "MageMana", "Disabled", "Disabled" },
+            DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
+            MAGE = { "Disabled", "Disabled", "Disabled" },
             WARRIOR = { "RageWarriorExecute", "RageWarriorExecute", "RageWarriorExecute" },
             SHAMAN = { "Maelstrom", "Disabled", "Disabled" },
             HUNTER = { "Focus", "Focus", "Focus" },
@@ -112,7 +116,7 @@ local defaults = {
         hideBar = false,
         enableClassicTicker = true,
         spenderFeedback = not isClassic,
-        borderType = "2PX",
+        borderType = "STATUSBAR",
         smoothing = true,
         smoothingSpeed = 6, -- 1 - 8
 
@@ -142,7 +146,7 @@ local defaults = {
         textAlign = "END",
         textOffsetX = 0,
         textOffsetY = 0,
-        textColor = {1,1,1, isClassic and 0.8 or 0.3},
+        textColor = {1,1,1, 0.6},
         textOutline = "", -- can be "OUTLINE" or empty string
         outOfCombatAlpha = 0,
         isVertical = false,
@@ -160,51 +164,19 @@ local defaults = {
     }
 }
 
-if APILevel <= 3 then
+if isForever then
     defaults.global.classConfig = {
         ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
-        DRUID = { "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic", "ShapeshiftDruidClassic" },
+        DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
         PALADIN = { "Disabled", "Disabled", "Disabled" },
         MONK = { "Disabled", "Disabled", "Disabled" },
         WARLOCK = { "Disabled", "Disabled", "Disabled" },
         DEMONHUNTER = { "Disabled", "Disabled" },
         DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
         MAGE = { "Disabled", "Disabled", "Disabled" },
-        WARRIOR = { "RageWarriorClassic", "RageWarriorClassic", "RageWarriorClassic" },
+        WARRIOR = { "RageWarrior", "RageWarrior", "RageWarrior" },
         SHAMAN = { "Disabled", "Disabled", "Disabled" },
         HUNTER = { "Disabled", "Disabled", "Disabled" },
-        PRIEST = { "Disabled", "Disabled", "Disabled" },
-    }
-end
-if APILevel == 4 then
-    defaults.global.classConfig = {
-        ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
-        DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
-        PALADIN = { "Disabled", "Disabled", "Disabled" },
-        MONK = { "Disabled", "Disabled", "Disabled" },
-        WARLOCK = { "Disabled", "Disabled", "Disabled" },
-        DEMONHUNTER = { "Disabled", "Disabled" },
-        DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
-        MAGE = { "Disabled", "Disabled", "Disabled" },
-        WARRIOR = { "RageWarrior", "RageWarrior", "RageWarrior" },
-        SHAMAN = { "Disabled", "Disabled", "Disabled" },
-        HUNTER = { "Focus", "Focus", "Focus" },
-        PRIEST = { "Disabled", "Disabled", "Disabled" },
-    }
-end
-if APILevel == 5 then
-    defaults.global.classConfig = {
-        ROGUE = { "EnergyRogue", "EnergyRogue", "EnergyRogue" },
-        DRUID = { "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid", "ShapeshiftDruid" },
-        PALADIN = { "Disabled", "Disabled", "Disabled" },
-        MONK = { "EnergyMonk", "EnergyMonk", "EnergyMonk" },
-        WARLOCK = { "Disabled", "Disabled", "Disabled" },
-        DEMONHUNTER = { "Disabled", "Disabled" },
-        DEATHKNIGHT = { "RunicPower", "RunicPower", "RunicPower" },
-        MAGE = { "Disabled", "Disabled", "Disabled" },
-        WARRIOR = { "RageWarrior", "RageWarrior", "RageWarrior" },
-        SHAMAN = { "Disabled", "Disabled", "Disabled" },
-        HUNTER = { "Focus", "Focus", "Focus" },
         PRIEST = { "Disabled", "Disabled", "Disabled" },
     }
 end
@@ -212,12 +184,17 @@ end
 local normalColor = defaults.profile.normalColor
 local lowColor = defaults.profile.lowColor
 local maxColor = defaults.profile.maxColor
-local free_marks = {}
 
 
 local pmult = 1
 local function pixelperfect(size)
     return floor(size/pmult + 0.5)*pmult
+end
+
+local GetNearestPixelSize = PixelUtil.GetNearestPixelSize
+local ppScaleRegion = UIParent
+function pixelperfect(size)
+    return GetNearestPixelSize(size, ppScaleRegion:GetEffectiveScale())
 end
 
 
@@ -226,14 +203,6 @@ function NugEnergy.PLAYER_LOGIN(self,event)
     _G.NugEnergyDB = _G.NugEnergyDB or {}
     self:DoMigrations(NugEnergyDB)
     self.db = LibStub("AceDB-3.0"):New("NugEnergyDB", defaults, "Default") -- Create a DB using defaults and using a shared default profile
-    -- NugEnergyDB = self.db
-    -- SetupDefaults(NugEnergyDB, defaults)
-
-    -- local res = GetCVar("gxWindowedResolution")
-    -- if res then
-    --     local w,h = string.match(res, "(%d+)x(%d+)")
-    --     pmult = (768/h) / UIParent:GetScale()
-    -- end
 
     NugEnergy:UpdateUpvalues()
 
@@ -254,56 +223,10 @@ function NugEnergy.PLAYER_LOGIN(self,event)
 end
 
 function NugEnergy:UpdateUpvalues()
-    isVertical = NugEnergy.db.profile.isVertical
-    onlyText = NugEnergy.db.profile.hideBar
-    spenderFeedback = NugEnergy.db.profile.spenderFeedback
-
-    if APILevel <= 2 then
-        self.ticker.UpdateUpvalues()
-    end
+    isVertical = false -- NugEnergy.db.profile.isVertical
+    -- spenderFeedback = NugEnergy.db.profile.spenderFeedback
 end
 
-
-local function FindAura(unit, spellID, filter)
-    for i=1, 100 do
-        -- rank will be removed in bfa
-        local name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, auraSpellID = UnitAura(unit, i, filter)
-        if not name then return nil end
-        if spellID == auraSpellID then
-            return name, icon, count, debuffType, duration, expirationTime, unitCaster, canStealOrPurge, nameplateShowPersonal, auraSpellID
-        end
-    end
-end
-
-local GetPowerBy5 = function(unit)
-    local p = UnitPower(unit)
-    local pmax = UnitPowerMax(unit)
-    -- p, p2, execute, shine, capped, insufficient
-    return p, math_modf(p/5)*5, nil, nil, p == pmax, nil
-end
-
-local RageBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
-    return function(unit)
-        local p = UnitPower(unit, PowerTypeIndex)
-        local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local shine = shineZone and (p >= pmax-shineZone)
-        -- local state
-        -- if p >= pmax-10 then state = "CAPPED" end
-        -- if GetSpecialization() == 3  p < 60 pmax-10
-        local capped = p >= pmax-cappedZone
-        local p2 = throttleText and math_modf(p/5)*5
-        return p, p2, execute, shine, capped, (minLimit and p < minLimit)
-    end
-end
-
-local ManaBarGetPower = function(shineZone, cappedZone, minLimit, throttleText)
-    return function(unit)
-        local p = UnitPower(unit, PowerTypeIndex)
-        local pmax = UnitPowerMax(unit, PowerTypeIndex)
-        local p2 = math.floor(p/pmax*100)
-        return p, p2
-    end
-end
 
 function NugEnergy.Initialize(self)
     -- self:RegisterEvent("UNIT_POWER_UPDATE")
@@ -344,82 +267,28 @@ function NugEnergy.UNIT_POWER_UPDATE(self,event,unit,powertype)
     if powertype == PowerFilter then self:UpdateEnergy() end
 end
 NugEnergy.UNIT_POWER_FREQUENT = NugEnergy.UNIT_POWER_UPDATE
+
 function NugEnergy.UpdateEnergy(self, elapsed)
-    local p, p2, _, shine, capped, insufficient = GetPower("player")
-    local wasFull = isFull
-    isFull = p == GetPowerMax("player", PowerTypeIndex)
-    if isFull ~= wasFull then
-        NugEnergy:UPDATE_STEALTH(nil, true)
+    local p, _, glowIntensity = GetPower("player")
+
+    self.text:SetText(p)
+
+    local c = UnitPowerPercent("player", PowerTypeIndex, false, colorCurve)
+
+    local executeAlpha = 0
+    if executeRange and UnitExists("target") then
+        executeAlpha = UnitHealthPercent("target", nil, executeCurve)
     end
+    self.execute:SetAlpha(executeAlpha)
 
-    p2 = p2 or p
-    self.text:SetText(p2)
-    if not onlyText then
-        if shine and upvalueInCombat then
-            -- self.glow:Show()
-            if not self.glow:IsPlaying() then self.glow:Play() end
-        else
-            -- self.glow:Hide()
-            self.glow:Stop()
-        end
-        local c
-        if capped then
-            c = maxColor
-            self.glowanim:SetDuration(0.15)
-        elseif execute then
-            c = NugEnergy.db.profile.altColor
-            self.glowanim:SetDuration(0.3)
-        elseif insufficient then
-            c = lowColor
-            self.glowanim:SetDuration(0.3)
-        else
-            c = normalColor
-            self.glowanim:SetDuration(0.3)
-        end
+    self:SetColor(c:GetRGBA())
+    self.alertFrame:SetAlpha(glowIntensity)
 
-        self:SetColor(unpack(c))
-
-        if APILevel <= 2 and PowerTypeIndex == Enum_PowerType_Energy then
-            self:ColorTickWindow(capped, c)
-        end
-
-        self:SetValue(p)
-        --if self.marks[p] then self:PlaySpell(self.marks[p]) end
-        if self.marks[p] then self.marks[p].shine:Play() end
-    end
+    self.bar:SetValue(p)
+    self.fade:SetValue(p, 1)
 end
 NugEnergy.Update = NugEnergy.UpdateEnergy
-NugEnergy.__UpdateEnergy = NugEnergy.UpdateEnergy
 
--- local idleSince = nil
--- function NugEnergy.UpdateEclipseEnergy(self)
---     local p = UnitPower( "player", SPELL_POWER_ECLIPSE )
---     local mp = UnitPowerMax( "player", SPELL_POWER_ECLIPSE )
---     local absp = math.abs(p)
---     self.text:SetText(absp)
---     if not onlyText then
---         if p <= 0 then
---             self:SetStatusBarColor(unpack(lunar))
---             self.bg:SetVertexColor(lunar[1]*.5,lunar[2]*.5,lunar[3]*.5)
---         else
---             self:SetStatusBarColor(unpack(solar))
---             self.bg:SetVertexColor(solar[1]*.5,solar[2]*.5,solar[3]*.5)
---         end
---         self:SetValue(absp)
---     end
---     if p == 0 and not UnitAffectingCombat("player") then
---         if not idleSince then
---             idleSince = GetTime()
---         else
---             if idleSince < GetTime()-3 then
---                 self:Hide()
---                 idleSince = nil
---             end
---         end
---     else
---         idleSince = nil
---     end
--- end
 
 function NugEnergy:Disable()
     PowerFilter = nil
@@ -430,32 +299,13 @@ function NugEnergy:Disable()
     self:Hide()
 end
 
-function NugEnergy.UNIT_HEALTH(self, event, unit)
-    if unit ~= "target" then return end
-    local uhm = UnitHealthMax(unit)
-    if uhm == 0 then uhm = 1 end
-    if execute_range then
-        execute = UnitHealth(unit)/uhm < execute_range
-    else
-        execute = false
-    end
-    self:UpdateEnergy()
+
+function NugEnergy:SetExecuteRange(range)
+    executeCurve:ClearPoints()
+    executeCurve:AddPoint(0.0, 0.35)
+    executeCurve:AddPoint(range, 0)
+    executeRange = range
 end
-
-function NugEnergy.PLAYER_TARGET_CHANGED(self,event)
-    if UnitExists('target') then
-        self.UNIT_HEALTH(self,event,"target")
-    end
-end
-
-
--- function NugEnergy.UNIT_MAXPOWER(self)
---     self:SetMinMaxValues(0,GetPowerMax("player", PowerTypeIndex))
---     if not self.marks then return end
---     for _, mark in pairs(self.marks) do
---         mark:Update()
---     end
--- end
 
 local fader = CreateFrame("Frame", nil, NugEnergy)
 NugEnergy.fader = fader
@@ -484,6 +334,7 @@ end
 function NugEnergy:StartHiding()
     self:Show()
     if (not self.hiding)  then
+        self.fade:Hide()
         fader:SetScript("OnUpdate", HideTimer)
         fader.OnUpdateCounter = 0
         self.hiding = true
@@ -492,6 +343,7 @@ end
 
 function NugEnergy:StopHiding()
     -- if self.hiding then
+        self.fade:Show()
         fader:SetScript("OnUpdate", nil)
         fader.OnUpdateCounter = 0
         self.hiding = false
@@ -508,7 +360,7 @@ function NugEnergy:UpdateVisibility()
     local inCombat = UnitAffectingCombat("player")
     upvalueInCombat = inCombat
     if (inCombat or
-        ((class == "ROGUE" or class == "DRUID") and IsStealthed() and (self.ticker.isEnabled or (shouldBeFull and not isFull))) or
+        ((class == "ROGUE" or class == "DRUID") and IsStealthed()) or
         ForcedToShow)
         and PowerFilter
     then
@@ -525,21 +377,6 @@ function NugEnergy:UpdateVisibility()
     else
         self:Hide()
     end
-end
-
-function NugEnergy.ReconfigureMarks(self)
-    -- local spec_marks = NugEnergy.db.profile_Character.marks[GetSpecialization() or 0]
-    -- for at, frame in pairs(NugEnergy.marks) do
-    --     frame:Hide()
-    --     table.insert(free_marks, frame)
-    --     NugEnergy.marks[at] = nil
-    --     -- print("Hiding", at)
-    -- end
-    -- for at in pairs(spec_marks) do
-    --     -- print("Showing", at)
-    --     NugEnergy:CreateMark(at)
-    -- end
-    -- -- NugEnergy:RealignMarks()
 end
 
 
@@ -635,6 +472,26 @@ function NugEnergy:SetColorOverride(r,g,b)
     self:SetNormalColor()
 end
 
+
+
+
+colorCurve = C_CurveUtil.CreateColorCurve()
+colorCurve:SetType(Enum.LuaCurveType.Step);
+local currentCapLimit = 1
+local currentMinLimit = nil
+function NugEnergy:SetColorThresholds(capLimit, minLimit)
+    currentCapLimit = capLimit
+    currentMinLimit = minLimit
+    colorCurve:ClearPoints()
+    local normalStart = 0.0
+    if minLimit then
+        colorCurve:AddPoint(0.0, CreateColor(unpack(lowColor)))
+        normalStart = minLimit
+    end
+    colorCurve:AddPoint(normalStart, CreateColor(unpack(normalColor)))
+    colorCurve:AddPoint(capLimit, CreateColor(unpack(maxColor)))
+end
+
 function NugEnergy:SetNormalColor()
     if colorOverride then
         normalColor = colorOverride
@@ -652,6 +509,7 @@ function NugEnergy:SetNormalColor()
     if not NugEnergy.db.profile.useMaxColor then
         maxColor = normalColor
     end
+    NugEnergy:SetColorThresholds(currentCapLimit, currentMinLimit)
 end
 
 function NugEnergy:Resize()
@@ -689,28 +547,21 @@ function NugEnergy:Resize()
         text:SetJustifyH("CENTER")
 
     else
-        f:SetWidth(width)
-        f:SetHeight(height)
+        self:SetWidth(width)
+        self:SetHeight(height)
 
-        f:SetOrientation("HORIZONTAL")
-
-        if not onlyText then
-            f.spark:ClearAllPoints()
-            f.spark:SetTexCoord(0,1,0,1)
-            f.spark:SetWidth(height*2)
-            f.spark:SetHeight(height)
-        end
+        self.bar:SetOrientation("HORIZONTAL")
 
         text:ClearAllPoints()
         local textAlign = NugEnergy.db.profile.textAlign
         if textAlign == "END" then
-            text:SetPoint("RIGHT", f, "RIGHT", -7+NugEnergy.db.profile.textOffsetX, -2+NugEnergy.db.profile.textOffsetY)
+            text:SetPoint("RIGHT", f, "RIGHT", -7+NugEnergy.db.profile.textOffsetX, -1+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyH("RIGHT")
         elseif textAlign == "CENTER" then
-            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergy.db.profile.textOffsetX, -2+NugEnergy.db.profile.textOffsetY)
+            text:SetPoint("CENTER", f, "CENTER", 0+NugEnergy.db.profile.textOffsetX, -1+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyH("CENTER")
         elseif textAlign == "START" then
-            text:SetPoint("LEFT", f, "LEFT", 7+NugEnergy.db.profile.textOffsetX, -2+NugEnergy.db.profile.textOffsetY)
+            text:SetPoint("LEFT", f, "LEFT", 7+NugEnergy.db.profile.textOffsetX, -1+NugEnergy.db.profile.textOffsetY)
             text:SetJustifyH("LEFT")
         end
 
@@ -718,16 +569,11 @@ function NugEnergy:Resize()
     end
 
     if not onlyText then
-        f.spentBar:ClearAllPoints()
         self:UpdateEnergy()
 
         local tex = getStatusbar()
-        f:SetStatusBarTexture(tex)
-        f.bg:SetTexture(tex)
-        f.spentBar:SetTexture(tex)
-
-        f.spentBar:SetWidth(width)
-        f.spentBar:SetHeight(height)
+        self.bar:SetStatusBarTexture(tex)
+        self.bar.bg:SetTexture(tex)
     end
 end
 
@@ -762,6 +608,7 @@ local SparkSetValue = function(self, v)
 end
 
 function NugEnergy:UpdateFrameBorder()
+    self = self.bar
     local borderType = NugEnergy.db.profile.borderType
 
     if self.border then self.border:Hide() end
@@ -822,29 +669,43 @@ function NugEnergy:UpdateFrameBorder()
 end
 
 function NugEnergy.Create(self)
-    local f = self
     local width = NugEnergy.db.profile.width
     local height = NugEnergy.db.profile.height
+
+    local f = CreateFrame("StatusBar", "NugEnergyBar", self)
     if isVertical then
         height, width = width, height
         f:SetOrientation("VERTICAL")
     end
-    f:SetWidth(width)
-    f:SetHeight(height)
+    self:SetWidth(width)
+    self:SetHeight(height)
 
-    if not onlyText then
+    self.bar = f
+
+    f:SetFrameLevel(10)
+    f:SetAllPoints(self)
 
     self:UpdateFrameBorder()
 
     local tex = getStatusbar()
     f:SetStatusBarTexture(tex)
-    -- f:GetStatusBarTexture():SetDrawLayer("ARTWORK", 3)
+    -- f:SetStatusBarTexture("Interface\\BUTTONS\\WHITE8X8")
+    -- f:SetStatusBarColor(0,0,0,0.7)
+    -- f:SetFillStyle(Enum.StatusBarFillStyle.Reverse)
+    -- f:SetReverseFill(true)
+    local barTex = f:GetStatusBarTexture()
 
-    local bg = f:CreateTexture(nil,"BACKGROUND")
+    local bg = self:CreateTexture(nil,"BACKGROUND")
     bg:SetTexture(tex)
     bg:SetAllPoints(f)
-
     f.bg = bg
+
+    local missingPart = self:CreateTexture(nil,"BACKGROUND", nil, 2)
+    missingPart:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    missingPart:SetVertexColor(0,0,0,0.7)
+    missingPart:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",0,0)
+    missingPart:SetPoint("TOPLEFT", barTex, "TOPRIGHT",0,0)
+
 
     local spark = f:CreateTexture(nil, "ARTWORK", nil, 4)
     spark:SetBlendMode("ADD")
@@ -853,96 +714,43 @@ function NugEnergy.Create(self)
         spark:SetSize(f:GetWidth(), f:GetWidth()*2)
         spark:SetTexCoord(1,1,0,1,1,0,0,0)
     else
-        spark:SetSize(f:GetHeight()*2, f:GetHeight())
+        spark:SetWidth(height*2)
+        spark:SetPoint("TOP", barTex, "TOPRIGHT",0,0)
+        spark:SetPoint("BOTTOM", barTex, "BOTTOMRIGHT",0,0)
     end
-    spark:SetPoint("CENTER", f, "TOP",0,0)
-
     f.spark = spark
 
-    local spentBar = f:CreateTexture(nil, "ARTWORK", nil, 7)
-    -- spentBar:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
-    spentBar:SetTexture(tex)
-    -- spentBar:SetVertexColor(unpack(color))
-    spentBar:SetHeight(height*1)
-    spentBar:SetWidth(width)
+    local fade = CreateFrame("StatusBar", "NugEnergyBar", self)
+    fade:SetUsingParentLevel(true)
+    fade:SetStatusBarTexture("Interface\\BUTTONS\\WHITE8X8")
+    fade:SetStatusBarColor(1,0.3,0.3)
+    fade:SetAllPoints(self)
+    self.fade = fade
 
-    spentBar.SetColor = function(self, r1,g1,b1)
-        local r = math.min(1, r1 + 0.15)
-        local g = math.min(1, g1 + 0.15)
-        local b = math.min(1, b1 + 0.15)
-        self:SetVertexColor(r,g,b)
-    end
-    -- spentBar:SetBlendMode("ADD")
-    spentBar:SetPoint("LEFT", f, "LEFT",0,0)
-    spentBar:SetAlpha(0)
-    f.spentBar = spentBar
 
-    f.SetColor = function(self, r,g,b,a)
-        self:SetStatusBarColor(r,g,b,a)
-        self.bg:SetVertexColor(r*0.3,g*0.3,b*0.3)
-        self.spark:SetVertexColor(r,g,b)
-        -- self.spentBar:SetColor(r,g,b)
-        self.spentBar:SetVertexColor(r,g,b)
+    local execute = f:CreateTexture(nil, "ARTWORK", nil, 3)
+    -- execute:SetVertexColor(unpack(NugEnergy.db.profile.altColor))
+    execute:SetTexture([[Interface\AddOns\NugEnergy\executeIcon.tga]])
+    -- execute:SetAtlas("icons_64x64_deadly")
+    execute:SetBlendMode("ADD")
+    execute:SetSize(height, height)
+    execute:SetPoint("LEFT", self, "LEFT", 5,0)
+    f.execute = execute
+    self.execute = execute
+
+    self.SetColor = function(self, r,g,b,a)
+        local bar = self.bar
+        bar:SetStatusBarColor(r,g,b)
+        bar.bg:SetVertexColor(r,g,b)
+        bar.spark:SetVertexColor(r,g,b)
+        bar.execute:SetVertexColor(r,g,b)
     end
 
     local color = NugEnergy.db.profile.normalColor
-    f:SetColor(unpack(color))
+    self:SetColor(unpack(color))
 
 
-    f.OriginalSetValue = f.OriginalSetValue or f.SetValue
-
-    self:UpdateBarEffects()
-
-
-    local trail = spentBar:CreateAnimationGroup()
-    -- local sa1 = trail:CreateAnimation("Alpha")
-    -- sa1:SetFromAlpha(0)
-    -- sa1:SetToAlpha(1)
-    -- sa1:SetSmoothing("OUT")
-    -- sa1:SetDuration(0.1)
-    -- sa1:SetOrder(1)
-
-    local sa2 = trail:CreateAnimation("Alpha")
-    sa2:SetFromAlpha(1)
-    sa2:SetToAlpha(0)
-    -- sa2:SetSmoothing("IN")
-    sa2:SetDuration(0.6)
-    sa2:SetOrder(1)
-
-    -- local ta1 = trail:CreateAnimation("Translation")
-    -- ta1:SetOffset(0, 8)
-    -- ta1:SetSmoothing("OUT")
-    -- ta1:SetDuration(0.2)
-    -- ta1:SetOrder(1)
-
-    -- local ta1 = trail:CreateAnimation("Translation")
-    -- ta1:SetOffset(0, -38)
-    -- ta1:SetSmoothing("IN")
-    -- ta1:SetDuration(0.20)
-    -- ta1:SetOrder(2)
-
-    f.trail = trail
-    f.marks = {}
-    -- f:UNIT_MAXPOWER()
-    -- NEW MARKS
-    -- for p in pairs(NugEnergy.db.profile_Character.marks) do
-    --     self:CreateMark(p)
-    -- end
-    NugEnergy:ReconfigureMarks()
-
-    -- local glow = f:CreateTexture(nil,"OVERLAY")
-    -- glow:SetAllPoints(f)
-    -- glow:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
-    -- glow:SetAlpha(0)
-
-    -- local ag = glow:CreateAnimationGroup()
-    -- ag:SetLooping("BOUNCE")
-    -- local a1 = ag:CreateAnimation("Alpha")
-    -- a1:SetChange(0.1)
-    -- a1:SetDuration(0.2)
-    -- a1:SetOrder(1)
-
-    local at = CreateFrame("Frame", nil, f, BackdropTemplateMixin  and "BackdropTemplate")
+    local at = CreateFrame("Frame", nil, self, BackdropTemplateMixin  and "BackdropTemplate")
     local border_backdrop = {
         edgeFile = "Interface\\Addons\\NugEnergy\\glow", tileEdge = true, edgeSize = 16,
         -- insets = {left = -16, right = -16, top = -16, bottom = -16},
@@ -954,8 +762,9 @@ function NugEnergy.Create(self)
     at:SetPoint("TOPLEFT", -16, 16)
     at:SetPoint("BOTTOMRIGHT", 16, -16)
     at:SetAlpha(0)
-    f.alertFrame = at
+    self.alertFrame = at
 
+    --[[
     local sag = at:CreateAnimationGroup()
     sag:SetLooping("BOUNCE")
     local sa1 = sag:CreateAnimation("Alpha")
@@ -974,56 +783,9 @@ function NugEnergy.Create(self)
     self.glow = sag
     self.glowanim = sa1
     -- self.glowtex = glow
+    ]]
 
-
-
-
-
---~     -- MARKS
---~     local f2 = CreateFrame("Frame",nil,f)
---~     f2:SetWidth(height)--*.8
---~     f2:SetHeight(height)
---~     f2:SetBackdrop(backdrop)
---~     f2:SetBackdropColor(0,0,0,0.5)
---~     f2:SetAlpha(0)
---~     --f2:SetFrameStrata("BACKGROUND") --fall behind energy bar
---~     local icon = f2:CreateTexture(nil,"BACKGROUND")
---~     icon:SetTexCoord(.07, .93, .07, .93)
---~     icon:SetAllPoints(f2)
---~
---~     --local sht = f2:CreateTexture(nil,"OVERLAY")
---~     --sht:SetTexture([[Interface\AddOns\NugEnergy\white.tga]])
---~     --sht:SetAlpha(0.3)
---~     --sht:SetAllPoints(f)
-
---~     f2:SetPoint("RIGHT",f,"LEFT",-2,0)
---~
---~     local ag = f2:CreateAnimationGroup()
---~     local a1 = ag:CreateAnimation("Alpha")
---~     a1:SetChange(1)
---~     a1:SetDuration(0.3)
---~     a1:SetOrder(1)
---~
---~     local a2 = ag:CreateAnimation("Alpha")
---~     a2:SetChange(-1)
---~     a2:SetDuration(0.7)
---~     a2:SetOrder(2)
---~
---~     f.icon = icon
---~     f.ag = ag
---~
---~     f.PlaySpell = function(self,spellID)
---~         self.icon:SetTexture(select(3,GetSpellInfo(spellID)))
---~         self.ag:Play()
---~     end
-
-    end -- endif not onlyText
-
-    local pf = CreateFrame("Frame", nil, f)
-    pf:SetFrameLevel(2)
-    pf:SetAllPoints(f)
-
-    local text = pf:CreateFontString(nil, "OVERLAY")
+    local text = f:CreateFontString(nil, "OVERLAY")
     local font = getFont()
     local fontSize = NugEnergy.db.profile.fontSize
     text:SetFont(font,fontSize, NugEnergy.db.profile.textOutline)
@@ -1031,7 +793,7 @@ function NugEnergy.Create(self)
     local r,g,b,a = unpack(NugEnergy.db.profile.textColor)
     text:SetTextColor(r,g,b)
     text:SetAlpha(a)
-    f.text = text
+    self.text = text
 
     NugEnergy:Resize()
 
@@ -1041,149 +803,25 @@ function NugEnergy.Create(self)
         text:Show()
     end
 
-    f:SetPoint(NugEnergy.db.profile.point, UIParent, NugEnergy.db.profile.point, NugEnergy.db.profile.x, NugEnergy.db.profile.y)
+    self:SetPoint(NugEnergy.db.profile.point, UIParent, NugEnergy.db.profile.point, NugEnergy.db.profile.x, NugEnergy.db.profile.y)
 
     local oocA = NugEnergy.db.profile.outOfCombatAlpha
     if oocA > 0 then
-        f:SetAlpha(oocA)
+        self:SetAlpha(oocA)
     else
-        f:Hide()
+        self:Hide()
     end
 
-    f:EnableMouse(false)
-    f:RegisterForDrag("LeftButton")
-    f:SetMovable(true)
-    f:SetScript("OnDragStart",function(self) self:StartMoving() end)
-    f:SetScript("OnDragStop",function(self)
+    self:EnableMouse(false)
+    self:RegisterForDrag("LeftButton")
+    self:SetMovable(true)
+    self:SetScript("OnDragStart",function(self) self:StartMoving() end)
+    self:SetScript("OnDragStop",function(self)
         self:StopMovingOrSizing();
         local _
         _,_, NugEnergy.db.profile.point, NugEnergy.db.profile.x, NugEnergy.db.profile.y = self:GetPoint(1)
     end)
 end
-
-function NugEnergy:UpdateBarEffects(disableSmoothing)
-    local f = self
-
-    f.SetValue = f.OriginalSetValue
-
-    if true then
-        f.SetValueWithoutSpark = f.SetValue
-        -- Spark Layer
-        f.SetValue = function(self, new)
-            local cur = self:GetValue()
-            local min, max = self:GetMinMaxValues()
-            local fwidth = self:GetWidth()
-            local fheight = self:GetHeight()
-            local total = max-min
-
-            -- spark
-            local p = 0
-            if total > 0 then
-                p = (new-min)/(max-min)
-                if p > 1 then
-                    p = 1
-                end
-                if p <= 0.07 then -- hide spark when it's close to left border
-                    p = p - 0.2
-                    if p < 0 then p = 0 end
-                    local a = p*20
-                    self.spark:SetAlpha(a)
-                -- if p > 0.95 then
-                --     local a = (1-p)*20
-                --     self.spark:SetAlpha(a)
-                else
-                    self.spark:SetAlpha(1)
-                end
-            end
-            if isVertical then
-                self.spark:SetPoint("CENTER", self, "BOTTOM", 0, p*fheight)
-            else
-                self.spark:SetPoint("CENTER", self, "LEFT", p*fwidth, 0)
-            end
-            return self:SetValueWithoutSpark(new)
-        end
-    end
-
-    if NugEnergy.db.profile.smoothing and not disableSmoothing then
-        f.SetValueWithoutSmoothing = f.SetValue
-
-        f.smoothTicker = f.smoothTicker or CreateFrame("Frame", nil, f)
-        f.smoothTicker:Show()
-        f.smoothTicker.parent = f
-        local animationSpeed = 1 + 8 - NugEnergy.db.profile.smoothingSpeed
-        f.smoothTicker:SetScript("OnUpdate", function(self)
-            local value = self.smoothTargetValue
-            local bar = self.parent
-            local cur = bar:GetValue()
-            if not value or cur == value then return end
-
-            local threshold = self.threshold
-
-            local new = cur + (value-cur)/animationSpeed
-            bar:SetValueWithoutSmoothing(new)
-
-            if cur == value or math_abs(new - value) < threshold then
-                bar:SetValueWithoutSmoothing(value)
-                self.smoothTargetValue = nil
-            end
-        end)
-
-        f.SetValue = function(self, new)
-            self.smoothTicker.smoothTargetValue = new
-        end
-
-        f._SetMinMaxValues = f._SetMinMaxValues or f.SetMinMaxValues
-
-        f.SetMinMaxValues = function(self, min, max)
-            local range = max - min
-            self.smoothTicker.threshold = range/2000
-            self:_SetMinMaxValues(min, max)
-        end
-    else
-        if f.smoothTicker then f.smoothTicker:Hide() end
-    end
-
-    if NugEnergy.db.profile.spenderFeedback then
-        f.SetValueWithoutSpenderFeedback = f.SetValue
-        f.SetValue = function(self, new)
-            local cur = self:GetValue()
-            local min, max = self:GetMinMaxValues()
-            local fwidth = self:GetWidth()
-            local fheight = self:GetHeight()
-            local total = max-min
-
-            if spenderFeedback then
-                local diff = new - cur
-                if diff < 0 and math.abs(diff)/max > 0.1 then
-
-                    local p1 = new/max
-                    local pd = (-diff/max)
-
-
-                    if isVertical then
-                        local lpos = p1*fheight
-                        local len = pd*fheight
-                        self.spentBar:SetPoint("BOTTOM", self, "BOTTOM",0,lpos)
-                        self.spentBar:SetTexCoord(0, 1, p1, p1+pd)
-                        self.spentBar:SetHeight(len)
-                    else
-                        local lpos = p1*fwidth
-                        local len = pd*fwidth
-                        self.spentBar:SetPoint("LEFT", self, "LEFT",lpos,0)
-                        self.spentBar:SetTexCoord(p1, p1+pd, 0, 1)
-                        self.spentBar:SetWidth(len)
-                    end
-                    if self.trail:IsPlaying() then self.trail:Stop() end
-                    self.trail:Play()
-                    self.spentBar.currentValue = cur
-                end
-            end
-
-            return self:SetValueWithoutSpenderFeedback(new)
-        end
-    end
-end
-
 
 
 local ParseOpts = function(str)
@@ -1240,30 +878,6 @@ NugEnergy.Commands = {
         NugEnergy:EnableMouse(false)
         ForcedToShow = nil
         NugEnergy:UPDATE_STEALTH()
-    end,
-    ["markadd"] = function(v)
-        local p = ParseOpts(v)
-        local at = p["at"]
-        if at then
-            NugEnergy.db.profile_Character.marks[GetSpecialization() or 0][at] = true
-            NugEnergy:CreateMark(at)
-        end
-    end,
-    ["markdel"] = function(v)
-        local p = ParseOpts(v)
-        local at = p["at"]
-        if at then
-            NugEnergy.db.profile_Character.marks[GetSpecialization() or 0][at] = nil
-            NugEnergy:ReconfigureMarks()
-            -- NugEnergy.marks[at]:Hide()
-            -- NugEnergy.marks[at] = nil
-        end
-    end,
-    ["marklist"] = function(v)
-        print("Current marks:")
-        for p in pairs(NugEnergy.db.profile.marks) do
-            print(string.format("    @%d",p))
-        end
     end,
     ["reset"] = function(v)
         NugEnergy:SetPoint("CENTER",UIParent,"CENTER",0,0)
@@ -1341,94 +955,6 @@ function NugEnergy.SlashCmd(msg)
         NugEnergy.Commands[k](v)
     end
 end
-
-
-local UpdateMark = function(self)
-    local bar = self:GetParent()
-    local min,max = bar:GetMinMaxValues()
-    local pos = self.position / max * bar:GetWidth()
-    self:SetPoint("CENTER",bar,"LEFT",pos,0)
-end
-
-
-function NugEnergy.CreateMark(self, at)
-        if next(free_marks) then
-            local frame = table.remove(free_marks)
-            self.marks[at] = frame
-            frame.position = at
-            frame:Show()
-            return
-        end
-
-        local m = CreateFrame("Frame",nil,self)
-        m:SetWidth(2)
-        m:SetHeight(self:GetHeight())
-        m:SetFrameLevel(4)
-        m:SetAlpha(0.6)
-
-        local texture = m:CreateTexture(nil, "OVERLAY")
-        texture:SetTexture("Interface\\AddOns\\NugEnergy\\mark")
-        texture:SetVertexColor(1,1,1,0.3)
-        texture:SetAllPoints(m)
-        m.texture = texture
-
-        local spark = m:CreateTexture(nil, "OVERLAY")
-        spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
-        spark:SetAlpha(0)
-        spark:SetWidth(20)
-        spark:SetHeight(m:GetHeight()*2.7)
-        spark:SetPoint("CENTER",m)
-        spark:SetBlendMode('ADD')
-        m.spark = spark
-
-        local ag = spark:CreateAnimationGroup()
-        local a1 = ag:CreateAnimation("Alpha")
-        a1:SetFromAlpha(0)
-        a1:SetToAlpha(1)
-        a1:SetDuration(0.2)
-        a1:SetOrder(1)
-        local a2 = ag:CreateAnimation("Alpha")
-        a1:SetFromAlpha(1)
-        a1:SetToAlpha(0)
-        a2:SetDuration(0.4)
-        a2:SetOrder(2)
-
-        m.shine = ag
-        m.position = at
-        m.Update = UpdateMark
-        m:Update()
-        m:Show()
-
-        self.marks[at] = m
-
-        return m
-end
-
-
-function NugEnergy:RealignMarks(t)
-    local old_pos = {}
-    for k,v in pairs(self.marks) do
-        table.insert(old_pos, k)
-    end
-    local len = math.max(#t, #old_pos)
-    for i=1,len do
-        local v = old_pos[i]
-        if not v then
-            self:CreateMark(t[i])
-        else
-            local mark = self.marks[v]
-            if not t[i] then
-                mark:Hide()
-            else
-                local new = t[i]
-                mark.position = new
-                self.marks[v] = nil
-                self.makrs[new] = mark
-            end
-        end
-    end
-end
-
 
 function NugEnergy:NotifyGUI()
     if LibStub then
@@ -1510,6 +1036,7 @@ function NugEnergy:CreateGUI()
                                 end,
                                 order = 1,
                             },
+                            --[[
                             customcolor2 = {
                                 name = L"Alt Color",
                                 type = 'color',
@@ -1523,6 +1050,7 @@ function NugEnergy:CreateGUI()
                                     NugEnergy:SetNormalColor()
                                 end,
                             },
+                            ]]
                             customcolor3 = {
                                 name = L"Max Color",
                                 type = 'color',
@@ -1760,44 +1288,6 @@ function NugEnergy:CreateGUI()
                                     ["STATUSBAR"] = "Status Border",
                                 },
                             },
-                            spenderFeedback = {
-                                name = L"Spent / Ticker Fade",
-                                desc = L"Fade effect after each tick or when spending",
-                                type = "toggle",
-                                width = 3,
-                                order = 2,
-                                get = function(info) return NugEnergy.db.profile.spenderFeedback end,
-                                set = function(info, v)
-                                    NugEnergy.db.profile.spenderFeedback = not NugEnergy.db.profile.spenderFeedback
-                                    NugEnergy:UpdateUpvalues()
-                                    NugEnergy:UpdateBarEffects()
-                                end
-                            },
-                            smoothing = {
-                                name = L"Smoothing",
-                                type = "toggle",
-                                order = 3,
-                                get = function(info) return NugEnergy.db.profile.smoothing end,
-                                set = function(info, v)
-                                    NugEnergy.db.profile.smoothing = not NugEnergy.db.profile.smoothing
-                                    NugEnergy:UpdateBarEffects()
-                                end
-                            },
-                            smoothingSpeed = {
-                                name = L"Animation Speed",
-                                desc = L"Higher = Faster",
-                                disabled = function() return not NugEnergy.db.profile.smoothing end,
-                                type = "range",
-                                get = function(info) return NugEnergy.db.profile.smoothingSpeed end,
-                                set = function(info, v)
-                                    NugEnergy.db.profile.smoothingSpeed = tonumber(v)
-                                    NugEnergy:UpdateBarEffects()
-                                end,
-                                min = 1,
-                                max = 8,
-                                step = 0.5,
-                                order = 4,
-                            },
                         },
                     },
                     barGroup = {
@@ -1858,6 +1348,7 @@ function NugEnergy:CreateGUI()
                             -- },
                         },
                     },
+                    --[[
                     isVertical = {
                         name = L"Vertical",
                         type = "toggle",
@@ -1865,6 +1356,7 @@ function NugEnergy:CreateGUI()
                         get = function(info) return NugEnergy.db.profile.isVertical end,
                         set = function(info, v) NugEnergy.Commands.vertical() end
                     },
+                    ]]
                     textGroup = {
                         type = "group",
                         name = "",
@@ -2293,8 +1785,8 @@ function NugEnergy:ResetConfig()
     table.wipe(self.flags)
     self:DisableColorOverride()
     self.eventProxy:UnregisterAllEvents()
+    executeRange = nil
     self.eventProxy:SetScript("OnUpdate", nil)
-    self:UpdateBarEffects()
     self.ticker:Disable()
     if self.fsrwatch then
         self.fsrwatch:Disable()
@@ -2326,11 +1818,6 @@ end
 
 function NugEnergy:GetPowerFilter()
     return PowerFilter, PowerTypeIndex
-end
-
-
-function NugEnergy:ToggleExecute(state)
-    execute = state
 end
 
 function NugEnergy:SetPowerGetter(func)
