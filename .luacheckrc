@@ -130,4 +130,9 @@ globals = {
     "Settings",
 
     "C_SpecializationInfo",
+    "C_CurveUtil",
+    "PixelUtil",
+    "UnitPowerPercent",
+    "UnitHealthPercent",
+    "CreateColor",
 }

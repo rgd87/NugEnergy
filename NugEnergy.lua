@@ -51,6 +51,8 @@ NugEnergy.L = L
 
 NugEnergy:RegisterEvent("PLAYER_LOGIN")
 local UnitPower = UnitPower
+local UnitPowerPercent = UnitPowerPercent
+local UnitHealthPercent = UnitHealthPercent
 local math_modf = math.modf
 local math_abs = math.abs
 local math_max = math.max
@@ -290,16 +292,6 @@ function NugEnergy.UpdateEnergy(self, elapsed)
     self.fade:SetValue(p, 1)
 end
 NugEnergy.Update = NugEnergy.UpdateEnergy
-
-
-function NugEnergy:Disable()
-    PowerFilter = nil
-    PowerTypeIndex = nil
-    self:UnregisterEvent("UNIT_POWER_UPDATE")
-    self:UnregisterEvent("UNIT_MAXPOWER")
-    self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-    self:Hide()
-end
 
 
 function NugEnergy:SetExecuteRange(range)
@@ -1559,8 +1551,6 @@ function NugEnergy:UpdateConfig(force)
         self:Disable()
         currentConfigName = nil
         return
-    else
-        self:Enable()
     end
 
     local currentConfig = configs[currentConfigName]
@@ -1631,6 +1621,9 @@ function NugEnergy:GetTriggerState(config)
 end
 
 function NugEnergy:ResetConfig()
+    PowerFilter = nil
+    PowerTypeIndex = nil
+    self.isDisabled = nil
     table.wipe(self.flags)
     self:DisableColorOverride()
     self.eventProxy:UnregisterAllEvents()

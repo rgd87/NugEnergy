@@ -193,12 +193,15 @@ NugEnergy:RegisterConfig("GeneralRage", {
 
                 if newPowerType == "ENERGY" then
                     self:ApplyConfig("EnergyRogue")
+                    self:Enable()
                     self:Update()
                 elseif newPowerType == "RAGE" then
                     self:ApplyConfig("RageDruid")
+                    self:Enable()
                     self:Update()
                 elseif isMainline and GetSpecialization() == 1 then
                     self:ApplyConfig("LunarPower")
+                    self:Enable()
                     self:Update()
                 else
                     self:Disable()
