@@ -217,7 +217,9 @@ function NugEnergy.PLAYER_LOGIN(self,event)
             self:SetScript('OnShow', nil)
 
             if not NugEnergy.optionsPanel then
-                NugEnergy.optionsPanel = NugEnergy:CreateGUI()
+                local optionsPanel, categoryID = NugEnergy:CreateGUI()
+                NugEnergy.optionsPanel = optionsPanel
+                NugEnergy.settingsCategoryID = categoryID
             end
         end)
 end
@@ -864,10 +866,11 @@ end
 NugEnergy.Commands = {
     ["gui"] = function(v)
         if not NugEnergy.optionsPanel then
-            NugEnergy.optionsPanel = NugEnergy:CreateGUI()
+            local optionsPanel, categoryID = NugEnergy:CreateGUI()
+            NugEnergy.optionsPanel = optionsPanel
+            NugEnergy.settingsCategoryID = categoryID
         end
-        InterfaceOptionsFrame_OpenToCategory("NugEnergy")
-        InterfaceOptionsFrame_OpenToCategory("NugEnergy")
+        Settings.OpenToCategory(NugEnergy.settingsCategoryID)
     end,
     ["unlock"] = function(v)
         NugEnergy:EnableMouse(true)
@@ -1671,9 +1674,9 @@ function NugEnergy:CreateGUI()
     AceConfigRegistry:RegisterOptionsTable("NugEnergyOptions", opt)
 
     local AceConfigDialog = LibStub("AceConfigDialog-3.0")
-    local panelFrame = AceConfigDialog:AddToBlizOptions("NugEnergyOptions", "NugEnergy")
+    local panelFrame, categoryID = AceConfigDialog:AddToBlizOptions("NugEnergyOptions", "NugEnergy")
 
-    return panelFrame
+    return panelFrame, categoryID
 end
 
 local configs = {}
